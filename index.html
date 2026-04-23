@@ -949,20 +949,34 @@ const Game={
 
   handleKey(dir){
     if(!this.running||this.paused)return;
+
     const active=this.activeTiles.filter(st=>st.tile.direction===dir&&st.status==='active');
-    if(!active.length)return;
+
+    // No visible tile for this direction at all → wild press → miss
+    if(!active.length){
+      this.registerMiss();
+      return;
+    }
+
     active.sort((a,b)=>Math.abs(this.elapsed-a.tile.timestamp)-Math.abs(this.elapsed-b.tile.timestamp));
     const st=active[0],dt=this.elapsed-st.tile.timestamp,abs=Math.abs(dt);
+
     let rating;
-    if(abs<=this.PW)rating='PERFECT';
-    else if(dt<0&&abs<=this.EW)rating='EARLY';
-    else if(abs<=this.LW)rating='LATE';
-    else if(abs<=this.MW)rating='LATE';
-    else return;
+    if(abs<=this.PW)                  rating='PERFECT';
+    else if(dt<0 && abs<=this.EW)     rating='EARLY';
+    else if(dt>=0 && abs<=this.LW)    rating='LATE';
+    else if(abs<=this.MW)             rating='LATE';
+    else{
+      // Tile is visible but press was way outside any window → miss
+      this.registerMiss();
+      return;
+    }
+
     if(rating==='PERFECT'){playBeep(880,0.06,0.18);this.score+=100+this.combo*5;this.combo++;}
     else{playBeep(660,0.06,0.12);this.score+=50;this.combo=Math.max(0,this.combo-1);}
     this.flash(rating);
-    st.clicksLeft--;if(st.clicksLeft<=0){st.status='hit';this.activeTiles=this.activeTiles.filter(x=>x!==st);}
+    st.clicksLeft--;
+    if(st.clicksLeft<=0){st.status='hit';this.activeTiles=this.activeTiles.filter(x=>x!==st);}
     this.updateHUD();
   },
 
@@ -1018,13 +1032,13 @@ document.addEventListener('keydown',e=>{
   if(currentScreen!=='game')return;
   if(e.key==='Escape'){Game.pause();return;}
   const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
-  const dir=map[e.key]; if(dir){e.preventDefault();playBeep(880,0.04,0.12*(Settings.click/100));Game.handleKey(dir);}
+  const dir=map[e.key]; if(dir){e.preventDefault();Game.handleKey(dir);}
 });
 
 // Mobile D-pad
 ['up','down','left','right'].forEach(dir=>{
   const btn=$('dpad-'+dir);
-  const fire=()=>{playBeep(880,0.04,0.1*(Settings.click/100));Game.handleKey(dir);};
+  const fire=()=>{Game.handleKey(dir);};
   btn.addEventListener('touchstart',e=>{e.preventDefault();fire();},{passive:false});
   btn.addEventListener('mousedown',fire);
 });
