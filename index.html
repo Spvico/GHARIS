@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GHARIS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0a0a;--white:#f0f0f0;--dim:#888;--faint:#1e1e1e;--border:#2e2e2e;
+  --font-head:'Barlow Condensed',sans-serif;--font-mono:'Space Mono',monospace;
+  --tr:0.18s cubic-bezier(0.4,0,0.2,1);
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--white);font-family:var(--font-mono);overflow:hidden;user-select:none;touch-action:none;}
+
+/* ── SCREENS ── */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.32s ease;}
+.screen.active{opacity:1;pointer-events:all;}
+
+/* ══ PLATFORM PICKER ══ */
+#picker{flex-direction:column;background:var(--bg);z-index:200;}
+.grid-bg{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 39px,#151515 39px,#151515 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,#151515 39px,#151515 40px);pointer-events:none;}
+.picker-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:52px;animation:fadeUp 0.7s ease both;}
+.big-title{font-family:var(--font-head);font-size:clamp(72px,13vw,148px);font-weight:900;letter-spacing:0.18em;line-height:1;position:relative;text-align:center;}
+.big-title::after{content:'GHARIS';position:absolute;inset:0;color:transparent;-webkit-text-stroke:1px #303030;transform:translate(3px,3px);z-index:-1;}
+.picker-sub{font-size:10px;letter-spacing:0.5em;color:var(--dim);margin-top:8px;text-transform:uppercase;text-align:center;}
+.picker-cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
+.picker-card{width:170px;height:210px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;cursor:pointer;position:relative;overflow:hidden;transition:var(--tr);}
+.picker-card::before{content:'';position:absolute;inset:0;background:var(--white);transform:scaleY(0);transform-origin:bottom;transition:transform 0.22s ease;z-index:0;}
+.picker-card:hover::before,.picker-card:active::before{transform:scaleY(1);}
+.picker-card:hover,.picker-card:active{color:var(--bg);}
+.picker-card>*{position:relative;z-index:1;}
+.picker-card-icon{font-size:36px;line-height:1;}
+.picker-card-label{font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;}
+.picker-card-hint{font-size:9px;letter-spacing:0.12em;color:var(--dim);text-align:center;line-height:1.7;padding:0 14px;transition:color var(--tr);}
+.picker-card:hover .picker-card-hint,.picker-card:active .picker-card-hint{color:#555;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+
+/* ══ MAIN MENU ══ */
+#menu{flex-direction:column;background:var(--bg);}
+.menu-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:54px;}
+.title-block{text-align:center;animation:fadeUp 0.8s ease both;}
+.title-main{font-family:var(--font-head);font-size:clamp(72px,13vw,148px);font-weight:900;letter-spacing:0.18em;line-height:1;position:relative;}
+.title-main::after{content:'GHARIS';position:absolute;inset:0;color:transparent;-webkit-text-stroke:1px #303030;transform:translate(3px,3px);z-index:-1;}
+.title-sub{font-size:10px;letter-spacing:0.5em;color:var(--dim);margin-top:8px;text-transform:uppercase;}
+.menu-nav{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;animation:fadeUp 0.8s 0.12s ease both;}
+.menu-btn{display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;padding:22px 28px;border:1px solid var(--border);background:transparent;color:var(--white);transition:var(--tr);position:relative;overflow:hidden;min-width:120px;}
+.menu-btn::before{content:'';position:absolute;inset:0;background:var(--white);transform:scaleY(0);transform-origin:bottom;transition:transform 0.22s ease;z-index:0;}
+.menu-btn:hover::before,.menu-btn:active::before{transform:scaleY(1);}
+.menu-btn:hover,.menu-btn:active{color:var(--bg);}
+.menu-btn>*{position:relative;z-index:1;}
+.menu-btn-icon{font-size:26px;line-height:1;transition:transform 0.2s ease;}
+.menu-btn:hover .menu-btn-icon{transform:scale(1.12);}
+.menu-btn-label{font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;}
+
+/* ══ SHARED HEADER ══ */
+.screen-header{display:flex;align-items:center;justify-content:space-between;width:100%;padding:20px 32px;position:absolute;top:0;left:0;right:0;border-bottom:1px solid var(--border);z-index:50;background:var(--bg);}
+.screen-title{font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;}
+.back-btn{font-size:10px;letter-spacing:0.25em;cursor:pointer;border:1px solid var(--border);padding:8px 15px;background:transparent;color:var(--white);transition:var(--tr);text-transform:uppercase;font-family:var(--font-mono);flex-shrink:0;position:relative;z-index:60;}
+.back-btn:hover,.back-btn:active{background:var(--white);color:var(--bg);border-color:var(--white);}
+
+/* ══ LEVELS ══ */
+#levels{flex-direction:column;background:var(--bg);}
+.levels-area{display:flex;align-items:flex-start;gap:18px;overflow-x:auto;padding:20px 40px;position:absolute;top:68px;bottom:72px;left:0;right:0;scroll-behavior:smooth;scrollbar-width:none;}
+.levels-area::-webkit-scrollbar{display:none;}
+.level-card{flex-shrink:0;width:175px;height:215px;border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:16px;cursor:pointer;transition:var(--tr);position:relative;overflow:hidden;background:var(--bg);}
+.level-card::before{content:'';position:absolute;inset:0;background:var(--white);transform:scaleX(0);transform-origin:left;transition:transform 0.22s ease;z-index:0;}
+.level-card:hover::before,.level-card:active::before{transform:scaleX(1);}
+.level-card:hover,.level-card:active{color:var(--bg);}
+.level-card>*{position:relative;z-index:1;}
+.card-name{font-family:var(--font-head);font-size:17px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;line-height:1.15;}
+.card-desc{font-size:9px;letter-spacing:0.08em;color:var(--dim);line-height:1.6;transition:color var(--tr);}
+.level-card:hover .card-desc,.level-card:active .card-desc{color:#555;}
+.card-duration{font-family:var(--font-head);font-size:11px;letter-spacing:0.2em;color:var(--dim);transition:color var(--tr);}
+.level-card:hover .card-duration,.level-card:active .card-duration{color:#555;}
+.no-levels{text-align:center;color:var(--dim);font-size:10px;letter-spacing:0.15em;width:100%;padding:40px 20px;line-height:2.2;}
+.load-level-btn{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-family:var(--font-head);font-size:10px;letter-spacing:0.35em;cursor:pointer;border:1px solid var(--border);padding:9px 20px;background:transparent;color:var(--white);transition:var(--tr);text-transform:uppercase;white-space:nowrap;z-index:10;}
+.load-level-btn:hover,.load-level-btn:active{background:var(--white);color:var(--bg);}
+
+/* ══ SETTINGS ══ */
+#settings{flex-direction:column;background:var(--bg);}
+.settings-body{position:absolute;top:68px;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:30px;padding:32px 44px;max-width:500px;margin:0 auto;overflow-y:auto;}
+.setting-row{display:flex;flex-direction:column;gap:10px;}
+.setting-label{font-family:var(--font-head);font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;}
+.setting-label span{color:var(--white);}
+input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:var(--border);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--white);cursor:pointer;}
+
+/* ══ EDITOR ══ */
+#editor{flex-direction:column;background:var(--bg);align-items:stretch;}
+.editor-layout{display:flex;position:absolute;top:65px;bottom:0;left:0;right:0;overflow:hidden;}
+
+/* Sidebar — fixed width, scrollable content */
+.editor-sidebar{
+  width:255px;flex-shrink:0;
+  border-right:1px solid var(--border);
+  background:var(--bg);
+  position:relative;z-index:20;
+  overflow-y:auto;overflow-x:hidden;
+}
+.editor-sidebar::-webkit-scrollbar{width:3px;}
+.editor-sidebar::-webkit-scrollbar-thumb{background:var(--border);}
+.sidebar-inner{padding:16px;display:flex;flex-direction:column;}
+.sidebar-section{padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--faint);}
+.sidebar-section:last-child{border-bottom:none;margin-bottom:0;}
+.sidebar-label{font-family:var(--font-head);font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+.editor-input{width:100%;background:var(--faint);border:1px solid var(--border);color:var(--white);font-family:var(--font-mono);font-size:10px;padding:7px 9px;outline:none;transition:border-color var(--tr);}
+.editor-input:focus{border-color:var(--white);}
+.editor-input-row{display:flex;gap:5px;margin-top:5px;}
+.editor-input-row .editor-input{text-align:center;}
+.editor-input-tiny-label{font-size:8px;letter-spacing:0.15em;color:var(--dim);text-align:center;margin-top:2px;text-transform:uppercase;}
+.editor-btn{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:var(--font-head);font-size:10px;letter-spacing:0.25em;text-transform:uppercase;padding:8px;cursor:pointer;transition:var(--tr);margin-top:5px;}
+.editor-btn:hover,.editor-btn:active{background:var(--white);color:var(--bg);border-color:var(--white);}
+.editor-btn.danger:hover,.editor-btn.danger:active{background:#c00;border-color:#c00;color:#fff;}
+.tile-info{background:var(--faint);border:1px solid var(--border);padding:9px;font-size:9px;line-height:1.9;letter-spacing:0.03em;color:var(--dim);}
+.tile-info strong{color:var(--white);}
+.editor-notice{background:var(--faint);border-left:2px solid var(--white);padding:8px 11px;font-size:9px;line-height:1.7;color:var(--dim);margin-bottom:4px;}
+.dir-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:5px;}
+.dir-btn{height:29px;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:13px;cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center;}
+.dir-btn:hover,.dir-btn:active,.dir-btn.active{background:var(--white);color:var(--bg);border-color:var(--white);}
+.dir-btn.empty{pointer-events:none;background:transparent;border:none;}
+
+/* Editor workspace — pannable/zoomable */
+.editor-main{
+  flex:1;
+  overflow:hidden;
+  position:relative;
+  background:var(--bg);
+  cursor:grab;
+  /* block browser default touch behaviors inside workspace */
+  touch-action:none;
+}
+.editor-main.grabbing{cursor:grabbing;}
+.editor-viewport{
+  position:absolute;
+  top:0;left:0;
+  transform-origin:0 0;
+  will-change:transform;
+}
+.grid-canvas{display:grid;position:relative;}
+.grid-cell{width:64px;height:64px;position:relative;display:flex;align-items:center;justify-content:center;}
+.tile-block{width:50px;height:50px;border:2px solid var(--white);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;position:relative;transition:background var(--tr),color var(--tr);background:transparent;color:var(--white);}
+.tile-block.last-tile{background:var(--white);color:var(--bg);}
+.tile-block.sel-tile{outline:2px solid #aaa;outline-offset:3px;}
+.tile-block:hover{background:#ffffff14;}
+.tile-block.last-tile:hover{background:#ddd;}
+.multi-badge{position:absolute;top:-7px;right:-7px;width:14px;height:14px;background:var(--white);color:var(--bg);font-size:8px;font-family:var(--font-head);font-weight:700;display:flex;align-items:center;justify-content:center;}
+.tile-block.last-tile .multi-badge{background:var(--bg);color:var(--white);border:1px solid var(--white);}
+.add-btn{position:absolute;width:16px;height:16px;border:1px solid var(--border);background:var(--faint);color:var(--dim);font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--tr);z-index:5;}
+.add-btn:hover,.add-btn:active{background:var(--white);color:var(--bg);border-color:var(--white);}
+.add-btn.up   {top:-9px;left:50%;transform:translateX(-50%);}
+.add-btn.down {bottom:-9px;left:50%;transform:translateX(-50%);}
+.add-btn.left {left:-9px;top:50%;transform:translateY(-50%);}
+.add-btn.right{right:-9px;top:50%;transform:translateY(-50%);}
+.editor-zoom-hint{position:absolute;bottom:10px;right:12px;font-size:8px;letter-spacing:0.2em;color:#363636;pointer-events:none;text-transform:uppercase;}
+
+/* ══ GAME ══ */
+#game{background:var(--bg);}
+#game-canvas{position:absolute;inset:0;width:100%;height:100%;}
+.game-hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 28px;pointer-events:none;z-index:10;}
+.hud-item{font-family:var(--font-head);font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:var(--dim);}
+.hud-lives{display:flex;gap:7px;align-items:center;}
+.life-dot{width:8px;height:8px;border:1px solid var(--white);background:var(--white);transition:background 0.2s;}
+.life-dot.dead{background:transparent;}
+.hud-score{font-family:var(--font-head);font-size:26px;font-weight:700;color:var(--white);letter-spacing:0.1em;}
+.hud-combo{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--white);letter-spacing:0.1em;min-width:65px;text-align:right;}
+.accuracy-flash{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--font-head);font-size:38px;font-weight:900;letter-spacing:0.2em;pointer-events:none;z-index:20;opacity:0;}
+.accuracy-flash.perfect{color:#fff;}.accuracy-flash.early{color:#aaa;}.accuracy-flash.late{color:#aaa;}.accuracy-flash.miss{color:#555;}
+@keyframes flashAcc{0%{opacity:1;transform:translate(-50%,-65%) scale(1.1);}60%{opacity:1;transform:translate(-50%,-70%) scale(1);}100%{opacity:0;transform:translate(-50%,-75%) scale(0.95);}}
+.accuracy-flash.show{animation:flashAcc 0.6s ease forwards;}
+.progress-bar-wrap{position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--border);z-index:10;}
+.progress-bar-fill{height:100%;background:var(--white);transition:width 0.1s linear;}
+
+/* Mobile D-pad */
+#mobile-dpad{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:none;z-index:15;}
+.dpad-grid{display:grid;grid-template-columns:repeat(3,66px);grid-template-rows:repeat(3,66px);gap:4px;}
+.dpad-btn{width:66px;height:66px;border:1px solid var(--border);background:rgba(18,18,18,0.88);color:var(--white);font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:none;transition:background 0.08s,color 0.08s;}
+.dpad-btn:active{background:var(--white);color:var(--bg);}
+.dpad-empty{background:transparent !important;border:none !important;pointer-events:none;}
+#mobile-pause-btn{position:absolute;top:16px;right:18px;z-index:15;display:none;font-family:var(--font-head);font-size:10px;letter-spacing:0.3em;padding:8px 14px;border:1px solid var(--border);background:rgba(10,10,10,0.85);color:var(--white);cursor:pointer;text-transform:uppercase;-webkit-tap-highlight-color:transparent;}
+
+/* Overlays */
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;z-index:50;opacity:0;pointer-events:none;transition:opacity 0.3s ease;}
+.overlay.show{opacity:1;pointer-events:all;}
+.overlay-title{font-family:var(--font-head);font-size:clamp(38px,7vw,60px);font-weight:900;letter-spacing:0.2em;text-transform:uppercase;line-height:1;}
+.overlay-sub{font-family:var(--font-mono);font-size:10px;letter-spacing:0.3em;color:var(--dim);}
+.overlay-btns{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center;}
+.overlay-btn{font-family:var(--font-head);font-size:11px;letter-spacing:0.3em;text-transform:uppercase;padding:10px 24px;border:1px solid var(--border);background:transparent;color:var(--white);cursor:pointer;transition:var(--tr);}
+.overlay-btn:hover,.overlay-btn:active{background:var(--white);color:var(--bg);}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s ease;}
+.modal-overlay.show{opacity:1;pointer-events:all;}
+.modal-box{width:620px;max-width:92vw;border:1px solid var(--border);background:var(--bg);padding:26px;display:flex;flex-direction:column;gap:12px;max-height:80vh;}
+.modal-title{font-family:var(--font-head);font-size:15px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:11px;}
+.json-output{background:var(--faint);border:1px solid var(--border);padding:12px;font-family:var(--font-mono);font-size:10px;line-height:1.6;color:#aaa;overflow-y:auto;white-space:pre;cursor:text;user-select:text;max-height:40vh;}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;}
+
+/* Notification */
+.notif{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--white);color:var(--bg);font-family:var(--font-mono);font-size:10px;letter-spacing:0.07em;padding:11px 20px;z-index:999;max-width:550px;text-align:center;opacity:0;transition:opacity 0.3s ease,transform 0.3s ease;pointer-events:none;line-height:1.5;}
+.notif.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.hidden-input{display:none;}
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);}
+</style>
+</head>
+<body>
+
+<!-- ══ PLATFORM PICKER ══ -->
+<div class="screen active" id="picker">
+  <div class="grid-bg"></div>
+  <div class="picker-inner">
+    <div>
+      <div class="big-title">GHARIS</div>
+      <div class="picker-sub">Select your platform to begin</div>
+    </div>
+    <div class="picker-cards">
+      <div class="picker-card" id="pick-desktop">
+        <span class="picker-card-icon">🖥</span>
+        <span class="picker-card-label">Desktop</span>
+        <span class="picker-card-hint">Arrow keys or WASD<br>Full keyboard support</span>
+      </div>
+      <div class="picker-card" id="pick-mobile">
+        <span class="picker-card-icon">📱</span>
+        <span class="picker-card-label">Mobile</span>
+        <span class="picker-card-hint">On-screen D-pad<br>Touch optimised</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN MENU ══ -->
+<div class="screen" id="menu">
+  <div class="grid-bg"></div>
+  <div class="menu-content">
+    <div class="title-block">
+      <div class="title-main">GHARIS</div>
+      <div class="title-sub">rhythm · precision · geometry</div>
+    </div>
+    <nav class="menu-nav">
+      <button class="menu-btn" id="btn-editor">
+        <span class="menu-btn-icon">✮</span>
+        <span class="menu-btn-label">Editor</span>
+      </button>
+      <button class="menu-btn" id="btn-levels">
+        <span class="menu-btn-icon">✦</span>
+        <span class="menu-btn-label">Levels</span>
+      </button>
+      <button class="menu-btn" id="btn-settings">
+        <span class="menu-btn-icon">⊕</span>
+        <span class="menu-btn-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- ══ LEVELS ══ -->
+<div class="screen" id="levels">
+  <div class="screen-header">
+    <div class="screen-title">Levels</div>
+    <button class="back-btn" id="levels-back">← Back</button>
+  </div>
+  <div class="levels-area" id="levels-list"></div>
+  <button class="load-level-btn" id="load-json-btn">+ Load JSON</button>
+  <input type="file" class="hidden-input" id="load-json-input" accept=".json">
+</div>
+
+<!-- ══ SETTINGS ══ -->
+<div class="screen" id="settings">
+  <div class="screen-header">
+    <div class="screen-title">Settings</div>
+    <button class="back-btn" id="settings-back">← Back</button>
+  </div>
+  <div class="settings-body">
+    <div class="setting-row">
+      <div class="setting-label">Master Music Volume <span id="vol-music-val">80%</span></div>
+      <input type="range" id="vol-music" min="0" max="100" value="80">
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Sound Effects Volume <span id="vol-sfx-val">80%</span></div>
+      <input type="range" id="vol-sfx" min="0" max="100" value="80">
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Click Feedback Volume <span id="vol-click-val">100%</span></div>
+      <input type="range" id="vol-click" min="0" max="100" value="100">
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:18px;font-size:9px;color:var(--dim);line-height:2.2;letter-spacing:0.07em;">
+      Audio: assets/sfx/clicksound.mp3 · diesound.mp3 · uiclicksound.mp3 · hurtsound.mp3<br>
+      Levels: levels/[name]/song.mp3 + levelcode.json
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDITOR ══ -->
+<div class="screen" id="editor">
+  <div class="screen-header">
+    <div class="screen-title">Level Editor</div>
+    <button class="back-btn" id="editor-back">← Back</button>
+  </div>
+  <div class="editor-layout">
+
+    <div class="editor-sidebar">
+      <div class="sidebar-inner">
+
+        <div class="sidebar-section">
+          <div class="editor-notice">Custom levels generate JSON code to share with the owner to potentially become an official level.</div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-label">Level Info</div>
+          <input class="editor-input" id="ed-level-name" placeholder="Level Name" value="My Level">
+          <div style="margin-top:5px;"><input class="editor-input" id="ed-song-name" placeholder="song.mp3" value=""></div>
+          <div class="sidebar-label" style="margin-top:11px;">Duration</div>
+          <div class="editor-input-row">
+            <div style="flex:1"><input class="editor-input" id="ed-dur-min" type="number" min="0" value="2"><div class="editor-input-tiny-label">MIN</div></div>
+            <div style="flex:1"><input class="editor-input" id="ed-dur-sec" type="number" min="0" max="59" value="30"><div class="editor-input-tiny-label">SEC</div></div>
+            <div style="flex:1"><input class="editor-input" id="ed-dur-ms" type="number" min="0" max="999" value="0"><div class="editor-input-tiny-label">MS</div></div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-label">Selected Tile</div>
+          <div class="tile-info" id="tile-info">No tile selected.<br>Click a tile on the grid.</div>
+          <div style="margin-top:9px;">
+            <div class="sidebar-label">Direction</div>
+            <div class="dir-picker">
+              <div class="dir-btn empty"></div><div class="dir-btn" id="dir-up">↑</div><div class="dir-btn empty"></div>
+              <div class="dir-btn" id="dir-left">←</div><div class="dir-btn empty"></div><div class="dir-btn" id="dir-right">→</div>
+              <div class="dir-btn empty"></div><div class="dir-btn" id="dir-down">↓</div><div class="dir-btn empty"></div>
+            </div>
+          </div>
+          <div style="margin-top:9px;">
+            <div class="sidebar-label">Multi-Click</div>
+            <div style="display:flex;gap:5px;margin-top:3px;">
+              <button class="editor-btn" id="multi-1" style="flex:1;margin-top:0">× 1</button>
+              <button class="editor-btn" id="multi-2" style="flex:1;margin-top:0">× 2</button>
+            </div>
+          </div>
+          <div style="margin-top:9px;">
+            <div class="sidebar-label">Timestamp (seconds)</div>
+            <input class="editor-input" id="ed-tile-ts" type="number" step="0.01" placeholder="e.g. 1.50" min="0">
+          </div>
+          <button class="editor-btn danger" id="delete-tile-btn">Delete Tile</button>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-label">Actions</div>
+          <button class="editor-btn" id="export-json-btn">Export JSON</button>
+          <button class="editor-btn" id="import-json-ed-btn">Import JSON</button>
+          <input type="file" class="hidden-input" id="import-json-ed-input" accept=".json">
+          <button class="editor-btn" id="clear-grid-btn" style="margin-top:9px;">Clear Grid</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="editor-main" id="editor-main">
+      <div class="editor-viewport" id="editor-viewport">
+        <div class="grid-canvas" id="grid-canvas"></div>
+      </div>
+      <div class="editor-zoom-hint">Drag to pan · Scroll to zoom</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ GAME ══ -->
+<div class="screen" id="game">
+  <canvas id="game-canvas"></canvas>
+  <div class="game-hud">
+    <div class="hud-item" id="hud-level-name">—</div>
+    <div class="hud-score" id="hud-score">0</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+      <div class="hud-lives">
+        <div class="life-dot" id="life-0"></div>
+        <div class="life-dot" id="life-1"></div>
+        <div class="life-dot" id="life-2"></div>
+      </div>
+      <div class="hud-combo" id="hud-combo"></div>
+    </div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+  <div class="accuracy-flash" id="acc-flash">PERFECT</div>
+
+  <!-- Mobile D-pad -->
+  <div id="mobile-dpad">
+    <div class="dpad-grid">
+      <div class="dpad-btn dpad-empty"></div>
+      <div class="dpad-btn" id="dpad-up">↑</div>
+      <div class="dpad-btn dpad-empty"></div>
+      <div class="dpad-btn" id="dpad-left">←</div>
+      <div class="dpad-btn dpad-empty"></div>
+      <div class="dpad-btn" id="dpad-right">→</div>
+      <div class="dpad-btn dpad-empty"></div>
+      <div class="dpad-btn" id="dpad-down">↓</div>
+      <div class="dpad-btn dpad-empty"></div>
+    </div>
+  </div>
+  <button id="mobile-pause-btn">❙❙ Pause</button>
+
+  <div class="overlay" id="game-over-overlay">
+    <div class="overlay-title">GAME OVER</div>
+    <div class="overlay-sub" id="go-score-line">score · 0</div>
+    <div class="overlay-btns">
+      <button class="overlay-btn" id="go-retry">Retry</button>
+      <button class="overlay-btn" id="go-menu">Menu</button>
+    </div>
+  </div>
+  <div class="overlay" id="game-win-overlay">
+    <div class="overlay-title">CLEAR</div>
+    <div class="overlay-sub" id="win-score-line">score · 0</div>
+    <div class="overlay-btns">
+      <button class="overlay-btn" id="win-retry">Retry</button>
+      <button class="overlay-btn" id="win-menu">Menu</button>
+    </div>
+  </div>
+  <div class="overlay" id="game-pause-overlay">
+    <div class="overlay-title" style="font-size:clamp(34px,6vw,50px)">PAUSED</div>
+    <div class="overlay-btns">
+      <button class="overlay-btn" id="pause-resume">Resume</button>
+      <button class="overlay-btn" id="pause-menu">Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- JSON MODAL -->
+<div class="modal-overlay" id="json-modal">
+  <div class="modal-box">
+    <div class="modal-title">Export JSON</div>
+    <div class="json-output" id="json-output"></div>
+    <div class="modal-btns">
+      <button class="overlay-btn" id="copy-json-btn">Copy</button>
+      <button class="overlay-btn" id="close-json-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════
+const $ = id => document.getElementById(id);
+const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+
+let isMobile = false;
+
+function showNotif(msg, dur=4200) {
+  const n = $('notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  clearTimeout(showNotif._t);
+  showNotif._t = setTimeout(() => n.classList.remove('show'), dur);
+}
+
+// ════════════════════════════════════
+//  FULLSCREEN
+// ════════════════════════════════════
+function requestFullscreen() {
+  const el = document.documentElement;
+  try {
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
+  } catch(e) {}
+}
+
+// ════════════════════════════════════
+//  SCREEN ROUTER
+// ════════════════════════════════════
+let currentScreen = 'picker';
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  currentScreen = id;
+}
+
+// ════════════════════════════════════
+//  PLATFORM PICKER
+// ════════════════════════════════════
+function pickPlatform(mobile) {
+  isMobile = mobile;
+  requestFullscreen();
+  showScreen('menu');
+}
+$('pick-desktop').addEventListener('click', () => pickPlatform(false));
+$('pick-mobile').addEventListener('click',  () => pickPlatform(true));
+
+// ════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════
+const Settings = {
+  music:80, sfx:80, click:100,
+  load() {
+    const s = JSON.parse(localStorage.getItem('gharis_settings')||'{}');
+    this.music = s.music ?? 80; this.sfx = s.sfx ?? 80; this.click = s.click ?? 100;
+    $('vol-music').value = this.music;  $('vol-sfx').value = this.sfx;  $('vol-click').value = this.click;
+    $('vol-music-val').textContent = this.music+'%';
+    $('vol-sfx-val').textContent   = this.sfx+'%';
+    $('vol-click-val').textContent = this.click+'%';
+  },
+  save() { localStorage.setItem('gharis_settings', JSON.stringify({music:this.music,sfx:this.sfx,click:this.click})); }
+};
+Settings.load();
+['vol-music','vol-sfx','vol-click'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    const v = +$(id).value;
+    if(id==='vol-music'){Settings.music=v; $('vol-music-val').textContent=v+'%';}
+    if(id==='vol-sfx')  {Settings.sfx=v;   $('vol-sfx-val').textContent=v+'%';}
+    if(id==='vol-click'){Settings.click=v;  $('vol-click-val').textContent=v+'%';}
+    Settings.save();
+  });
+});
+
+// ════════════════════════════════════
+//  AUDIO
+// ════════════════════════════════════
+let _actx = null;
+function getCtx(){ if(!_actx) _actx=new(window.AudioContext||window.webkitAudioContext)(); return _actx; }
+
+function playBeep(freq=880,dur=0.06,vol=0.18,type='square'){
+  try{
+    const ctx=getCtx(),o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(vol*(Settings.click/100),ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+    o.start();o.stop(ctx.currentTime+dur);
+  }catch(e){}
+}
+
+function playMissSound(){
+  try{
+    const ctx=getCtx(),o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);o.type='sawtooth';o.frequency.value=180;
+    g.gain.setValueAtTime(0.15*(Settings.sfx/100),ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.25);
+    o.start();o.stop(ctx.currentTime+0.25);
+  }catch(e){}
+}
+
+function playDieSound(){
+  try{
+    const ctx=getCtx();
+    for(let i=0;i<3;i++){
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.type='sawtooth';o.frequency.value=400-i*120;
+      g.gain.setValueAtTime(0.1*(Settings.sfx/100),ctx.currentTime+i*0.12);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.12+0.3);
+      o.start(ctx.currentTime+i*0.12);o.stop(ctx.currentTime+i*0.12+0.3);
+    }
+  }catch(e){}
+}
+
+// ════════════════════════════════════
+//  LEVEL STORE
+// ════════════════════════════════════
+const LevelStore = {
+  _k:'gharis_levels',
+  getAll(){ return JSON.parse(localStorage.getItem(this._k)||'[]'); },
+  save(l){ localStorage.setItem(this._k,JSON.stringify(l)); },
+  add(d){ const l=this.getAll(),i=l.findIndex(x=>x.levelName===d.levelName); i>=0?l[i]=d:l.push(d); this.save(l); },
+};
+
+// Seed demo level
+(function(){
+  if(!LevelStore.getAll().find(l=>l.levelName==='Tutorial'))
+    LevelStore.add({levelName:'Tutorial',songFile:'',description:'A simple introduction to GHARIS.',duration:{minutes:0,seconds:20,milliseconds:0},tiles:[
+      {id:'t1', position:{x:0,y:0}, direction:'right',multiClick:1,timestamp:1.0},
+      {id:'t2', position:{x:1,y:0}, direction:'right',multiClick:1,timestamp:1.8},
+      {id:'t3', position:{x:2,y:0}, direction:'up',   multiClick:1,timestamp:2.6},
+      {id:'t4', position:{x:2,y:-1},direction:'up',   multiClick:2,timestamp:3.4},
+      {id:'t5', position:{x:2,y:-2},direction:'left', multiClick:1,timestamp:4.5},
+      {id:'t6', position:{x:1,y:-2},direction:'left', multiClick:1,timestamp:5.2},
+      {id:'t7', position:{x:0,y:-2},direction:'down', multiClick:1,timestamp:6.0},
+      {id:'t8', position:{x:0,y:-1},direction:'right',multiClick:1,timestamp:7.0},
+      {id:'t9', position:{x:1,y:-1},direction:'up',   multiClick:1,timestamp:7.8},
+      {id:'t10',position:{x:1,y:-2},direction:'left', multiClick:1,timestamp:9.0},
+      {id:'t11',position:{x:0,y:-2},direction:'down', multiClick:2,timestamp:10.0},
+      {id:'t12',position:{x:0,y:-1},direction:'right',multiClick:1,timestamp:11.5},
+      {id:'t13',position:{x:1,y:-1},direction:'right',multiClick:1,timestamp:12.2},
+      {id:'t14',position:{x:2,y:-1},direction:'down', multiClick:1,timestamp:13.0},
+      {id:'t15',position:{x:2,y:0}, direction:'left', multiClick:1,timestamp:14.0},
+    ]});
+})();
+
+// ════════════════════════════════════
+//  LEVELS SCREEN
+// ════════════════════════════════════
+function renderLevels(){
+  const list=$('levels-list'), levels=LevelStore.getAll();
+  list.innerHTML='';
+  if(!levels.length){list.innerHTML='<div class="no-levels">No levels found.<br>Load a JSON file or create one in the Editor.</div>';return;}
+  levels.forEach(lv=>{
+    const card=document.createElement('div'); card.className='level-card';
+    const d=lv.duration||{}, dur=String(d.minutes||0).padStart(2,'0')+':'+String(d.seconds||0).padStart(2,'0');
+    card.innerHTML=`<div class="card-name">${lv.levelName}</div><div class="card-desc">${lv.description||'—'}</div><div class="card-duration">${dur}</div>`;
+    card.addEventListener('click',()=>{playBeep(660,0.05);startGame(lv);});
+    list.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════
+//  EDITOR — free-pan workspace
+// ════════════════════════════════════
+const Editor = {
+  tiles:{}, lastKey:null, selectedKey:null,
+  panX:60, panY:60, zoom:1,
+  _dragging:false, _startX:0, _startY:0, _startPX:0, _startPY:0,
+  _panListenersAttached:false,
+
+  init(){
+    this.tiles={}; this.lastKey=null; this.selectedKey=null;
+    this.panX=80; this.panY=80; this.zoom=1;
+    this.placeTile(0,0,'right',1,0.5);
+    this.render();
+    this._centerOnTiles();
+    if(!this._panListenersAttached){ this._attachPanListeners(); this._panListenersAttached=true; }
+    else this._applyTransform();
+  },
+
+  _applyTransform(){
+    $('editor-viewport').style.transform=`translate(${this.panX}px,${this.panY}px) scale(${this.zoom})`;
+  },
+
+  _centerOnTiles(){
+    const main=$('editor-main');
+    const W=main.clientWidth||600, H=main.clientHeight||500;
+    const keys=Object.keys(this.tiles);
+    if(!keys.length){ this.panX=W/2-32; this.panY=H/2-32; this._applyTransform(); return; }
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    keys.forEach(k=>{const t=this.tiles[k];minX=Math.min(minX,t.position.x);maxX=Math.max(maxX,t.position.x);minY=Math.min(minY,t.position.y);maxY=Math.max(maxY,t.position.y);});
+    // Bounding box center in grid pixels (we expand by 1 in render, so offset by 1 CELL=64px)
+    const gcx=((minX+maxX)/2+1)*64, gcy=((minY+maxY)/2+1)*64;
+    this.panX=W/2-gcx*this.zoom; this.panY=H/2-gcy*this.zoom;
+    this._applyTransform();
+  },
+
+  _attachPanListeners(){
+    const el=$('editor-main');
+
+    // ── MOUSE ──
+    el.addEventListener('mousedown', e=>{
+      // Only start pan if NOT clicking on interactive elements
+      if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input')) return;
+      this._dragging=true;
+      this._startX=e.clientX; this._startY=e.clientY;
+      this._startPX=this.panX; this._startPY=this.panY;
+      el.classList.add('grabbing');
+    });
+    // Use window so drag continues even if mouse leaves the editor area
+    window.addEventListener('mousemove', e=>{
+      if(!this._dragging) return;
+      this.panX=this._startPX+(e.clientX-this._startX);
+      this.panY=this._startPY+(e.clientY-this._startY);
+      this._applyTransform();
+    });
+    window.addEventListener('mouseup', ()=>{
+      if(this._dragging){ this._dragging=false; $('editor-main').classList.remove('grabbing'); }
+    });
+
+    // ── TOUCH PAN ──
+    let t0=null;
+    el.addEventListener('touchstart', e=>{
+      if(e.touches.length!==1) return;
+      if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input')) return;
+      t0=e.touches[0];
+      this._startPX=this.panX; this._startPY=this.panY;
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('touchmove', e=>{
+      if(!t0||e.touches.length!==1) return;
+      const t=e.touches[0];
+      this.panX=this._startPX+(t.clientX-t0.clientX);
+      this.panY=this._startPY+(t.clientY-t0.clientY);
+      this._applyTransform();
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('touchend', ()=>{ t0=null; });
+
+    // ── WHEEL ZOOM ──
+    el.addEventListener('wheel', e=>{
+      e.preventDefault();
+      const rect=el.getBoundingClientRect();
+      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+      const factor=e.deltaY<0?1.1:0.91;
+      const nz=clamp(this.zoom*factor,0.25,3);
+      this.panX=mx-(mx-this.panX)*(nz/this.zoom);
+      this.panY=my-(my-this.panY)*(nz/this.zoom);
+      this.zoom=nz;
+      this._applyTransform();
+    },{passive:false});
+  },
+
+  tileKey(x,y){ return `${x},${y}`; },
+
+  placeTile(x,y,dir='right',multi=1,ts=0){
+    const k=this.tileKey(x,y);
+    if(this.tiles[k]) return;
+    this.tiles[k]={id:'t'+Date.now()+Math.random().toString(36).slice(2,5),position:{x,y},direction:dir,multiClick:multi,timestamp:ts};
+    this.lastKey=k;
+  },
+
+  deleteTile(k){ delete this.tiles[k]; if(this.lastKey===k)this.lastKey=null; if(this.selectedKey===k)this.selectedKey=null; },
+
+  nKey(x,y,dir){ const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[dir]; return this.tileKey(x+d[0],y+d[1]); },
+
+  selectTile(k){ this.selectedKey=k; this.updatePanel(); },
+
+  updatePanel(){
+    const tile=this.selectedKey?this.tiles[this.selectedKey]:null;
+    if(!tile){ $('tile-info').innerHTML='No tile selected.<br>Click a tile on the grid.'; ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.remove('active')); $('ed-tile-ts').value=''; return; }
+    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>×:</strong> ${tile.multiClick}<br><strong>Time:</strong> ${tile.timestamp}s`;
+    ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.toggle('active',tile.direction===d));
+    $('ed-tile-ts').value=tile.timestamp;
+  },
+
+  render(){
+    const canvas=$('grid-canvas');
+    canvas.innerHTML='';
+    const keys=Object.keys(this.tiles);
+    if(!keys.length){
+      const btn=document.createElement('div'); btn.style.cssText='width:32px;height:32px;border:1px solid #333;background:#1e1e1e;color:#888;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+      btn.textContent='+';
+      btn.addEventListener('click',()=>{ this.placeTile(0,0,'right',1,0.5); this.render(); this._centerOnTiles(); });
+      canvas.appendChild(btn); return;
+    }
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    keys.forEach(k=>{const t=this.tiles[k];minX=Math.min(minX,t.position.x);maxX=Math.max(maxX,t.position.x);minY=Math.min(minY,t.position.y);maxY=Math.max(maxY,t.position.y);});
+    // Add 1 cell border so add-buttons don't clip
+    minX--;maxX++;minY--;maxY++;
+    const cols=maxX-minX+1, rows=maxY-minY+1;
+    canvas.style.gridTemplateColumns=`repeat(${cols},64px)`;
+    canvas.style.gridTemplateRows=`repeat(${rows},64px)`;
+    const arrow={up:'↑',down:'↓',left:'←',right:'→'};
+    for(let row=minY;row<=maxY;row++){
+      for(let col=minX;col<=maxX;col++){
+        const key=this.tileKey(col,row), tile=this.tiles[key];
+        const cell=document.createElement('div'); cell.className='grid-cell';
+        if(tile){
+          const blk=document.createElement('div');
+          blk.className='tile-block'+(key===this.lastKey?' last-tile':'')+(key===this.selectedKey?' sel-tile':'');
+          blk.textContent=arrow[tile.direction]||'?';
+          if(tile.multiClick>1){ const b=document.createElement('div'); b.className='multi-badge'; b.textContent=tile.multiClick; blk.appendChild(b); }
+          blk.addEventListener('click',e=>{ e.stopPropagation(); this.selectTile(key); this.render(); });
+          cell.appendChild(blk);
+          ['up','down','left','right'].forEach(dir=>{
+            const nk=this.nKey(col,row,dir);
+            if(!this.tiles[nk]){
+              const ab=document.createElement('div'); ab.className='add-btn '+dir; ab.textContent='+';
+              ab.addEventListener('click',e=>{
+                e.stopPropagation();
+                const[nx,ny]=nk.split(',').map(Number);
+                this.placeTile(nx,ny,dir,1,Math.round((tile.timestamp+0.8)*100)/100);
+                this.selectTile(this.tileKey(nx,ny));
+                this.render();
+              });
+              cell.appendChild(ab);
+            }
+          });
+        }
+        canvas.appendChild(cell);
+      }
+    }
+    this.updatePanel();
+  },
+
+  toJSON(){
+    const tiles=Object.values(this.tiles).map(t=>({id:t.id,position:t.position,direction:t.direction,multiClick:t.multiClick,timestamp:t.timestamp}));
+    tiles.sort((a,b)=>a.timestamp-b.timestamp);
+    return{levelName:$('ed-level-name').value||'Untitled',songFile:$('ed-song-name').value||'',description:'',duration:{minutes:parseInt($('ed-dur-min').value)||0,seconds:parseInt($('ed-dur-sec').value)||0,milliseconds:parseInt($('ed-dur-ms').value)||0},tiles};
+  },
+
+  fromJSON(data){
+    this.tiles={}; this.lastKey=null; this.selectedKey=null;
+    $('ed-level-name').value=data.levelName||''; $('ed-song-name').value=data.songFile||'';
+    if(data.duration){$('ed-dur-min').value=data.duration.minutes||0;$('ed-dur-sec').value=data.duration.seconds||0;$('ed-dur-ms').value=data.duration.milliseconds||0;}
+    (data.tiles||[]).forEach(t=>{ const k=this.tileKey(t.position.x,t.position.y); this.tiles[k]={id:t.id||('t'+Math.random().toString(36).slice(2)),position:{x:t.position.x,y:t.position.y},direction:t.direction||'right',multiClick:t.multiClick||1,timestamp:t.timestamp||0}; this.lastKey=k; });
+    this.render(); this._centerOnTiles();
+  }
+};
+
+// Editor sidebar controls
+$('dir-up').addEventListener('click',   ()=>applyDir('up'));
+$('dir-down').addEventListener('click', ()=>applyDir('down'));
+$('dir-left').addEventListener('click', ()=>applyDir('left'));
+$('dir-right').addEventListener('click',()=>applyDir('right'));
+function applyDir(dir){ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].direction=dir; Editor.render(); }
+
+$('multi-1').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=1; Editor.render(); });
+$('multi-2').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=2; Editor.render(); });
+$('ed-tile-ts').addEventListener('change',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].timestamp=parseFloat($('ed-tile-ts').value)||0; Editor.updatePanel(); });
+$('delete-tile-btn').addEventListener('click',()=>{ if(!Editor.selectedKey) return; Editor.deleteTile(Editor.selectedKey); Editor.render(); showNotif('Tile deleted.'); });
+$('clear-grid-btn').addEventListener('click',()=>{ if(!confirm('Clear the entire grid?')) return; Editor.init(); showNotif('Grid cleared.'); });
+$('export-json-btn').addEventListener('click',()=>{
+  const json=JSON.stringify(Editor.toJSON(),null,2);
+  $('json-output').textContent=json; $('json-modal').classList.add('show');
+  LevelStore.add(Editor.toJSON()); showNotif('Saved locally + JSON ready to copy.');
+});
+$('import-json-ed-btn').addEventListener('click',()=>$('import-json-ed-input').click());
+$('import-json-ed-input').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{ try{Editor.fromJSON(JSON.parse(ev.target.result));showNotif('Level imported.');}catch{showNotif('Invalid JSON.');} }; r.readAsText(f); e.target.value=''; });
+$('copy-json-btn').addEventListener('click',()=>{ navigator.clipboard.writeText($('json-output').textContent).then(()=>showNotif('Copied!')).catch(()=>showNotif('Copy text manually.')); });
+$('close-json-btn').addEventListener('click',()=>$('json-modal').classList.remove('show'));
+
+// ════════════════════════════════════
+//  GAMEPLAY ENGINE
+// ════════════════════════════════════
+const Game={
+  level:null,tiles:[],tileStates:[],activeTiles:[],
+  score:0,combo:0,lives:3,running:false,paused:false,
+  startTime:0,elapsed:0,animId:null,audio:null,totalDuration:0,nextTileIdx:0,
+  canvas:null,ctx:null,
+  TILE:64,APPEAR:1.5,
+  PW:0.08,EW:0.18,LW:0.18,MW:0.35,
+
+  init(lv){
+    this.level=lv;this.score=0;this.combo=0;this.lives=3;
+    this.running=false;this.paused=false;this.elapsed=0;this.nextTileIdx=0;this.activeTiles=[];
+    this.tiles=(lv.tiles||[]).map(t=>({...t})).sort((a,b)=>a.timestamp-b.timestamp);
+    this.tileStates=this.tiles.map(t=>({tile:t,clicksLeft:t.multiClick||1,status:'pending'}));
+    const d=lv.duration||{}; this.totalDuration=(d.minutes||0)*60+(d.seconds||0)+(d.milliseconds||0)/1000||60;
+    this.canvas=$('game-canvas');this.ctx=this.canvas.getContext('2d');this.resize();
+    this.audio=null;
+    if(lv.songFile){try{this.audio=new Audio(`levels/${encodeURIComponent(lv.levelName)}/${encodeURIComponent(lv.songFile)}`);this.audio.volume=clamp(Settings.music/100,0,1);}catch(e){}}
+    this.updateHUD();showScreen('game');
+    // Show mobile controls if mobile
+    $('mobile-dpad').style.display   = isMobile?'block':'none';
+    $('mobile-pause-btn').style.display = isMobile?'block':'none';
+    ['game-over-overlay','game-win-overlay','game-pause-overlay'].forEach(id=>$(id).classList.remove('show'));
+    $('hud-level-name').textContent=lv.levelName;
+    setTimeout(()=>this.start(),600);
+  },
+
+  resize(){this.canvas.width=window.innerWidth;this.canvas.height=window.innerHeight;},
+
+  start(){
+    this.running=true;this.startTime=performance.now();
+    if(this.audio)this.audio.play().catch(()=>{});
+    this.loop();
+  },
+
+  loop(){
+    if(!this.running)return;
+    if(this.paused){this.animId=requestAnimationFrame(()=>this.loop());return;}
+    this.elapsed=(performance.now()-this.startTime)/1000;
+    // Spawn
+    while(this.nextTileIdx<this.tiles.length){
+      const st=this.tileStates[this.nextTileIdx];
+      if(st.tile.timestamp-this.APPEAR<=this.elapsed){if(st.status==='pending'){st.status='active';this.activeTiles.push(st);}this.nextTileIdx++;}else break;
+    }
+    // Auto-miss
+    this.activeTiles.forEach(st=>{if(st.status==='active'&&this.elapsed-st.tile.timestamp>this.MW){st.status='missed';this.registerMiss();}});
+    this.activeTiles=this.activeTiles.filter(st=>st.status==='active');
+    // Win check
+    if(this.tileStates.every(st=>st.status!=='pending'&&st.status!=='active')&&this.elapsed>(this.tiles.length?this.tiles[this.tiles.length-1].timestamp+1:2)){this.win();return;}
+    $('progress-fill').style.width=clamp(this.elapsed/this.totalDuration*100,0,100)+'%';
+    this.draw();
+    this.animId=requestAnimationFrame(()=>this.loop());
+  },
+
+  draw(){
+    const W=this.canvas.width,H=this.canvas.height,ctx=this.ctx;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    const cx=W/2,cy=H/2,T=this.TILE,G=80,appear=-this.APPEAR;
+    this.activeTiles.forEach(st=>{
+      const tile=st.tile,dt=this.elapsed-tile.timestamp;
+      const tx=cx+tile.position.x*G,ty=cy+tile.position.y*G;
+      ctx.save();ctx.translate(tx,ty);
+      ctx.globalAlpha=clamp((dt-appear)/0.3,0,1);
+      ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.strokeRect(-T/2,-T/2,T,T);
+      ctx.fillStyle='#444';ctx.font=`bold 22px "Barlow Condensed",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText({up:'↑',down:'↓',left:'←',right:'→'}[tile.direction]||'?',0,0);
+      if(st.clicksLeft>1||tile.multiClick>1){const tot=tile.multiClick||1;for(let i=0;i<tot;i++){ctx.fillStyle=i<st.clicksLeft?'#fff':'#333';ctx.fillRect(T/2-8-i*10,-T/2+4,6,6);}}
+      ctx.restore();
+      if(dt>=appear&&dt<=this.MW+0.1){
+        const prog=clamp((dt-appear)/(-appear),0,1);
+        const rSize=(T*2.2)-(T*2.2-T*0.52)*prog;
+        let rA=1;if(dt>0)rA=clamp(1-(dt/this.MW)*0.8,0.1,1);
+        ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=rA;
+        ctx.strokeStyle='#ffffff';ctx.lineWidth=clamp(3-prog*1.5,1.2,3);
+        ctx.strokeRect(-rSize/2,-rSize/2,rSize,rSize);
+        ctx.restore();
+      }
+    });
+  },
+
+  handleKey(dir){
+    if(!this.running||this.paused)return;
+    const active=this.activeTiles.filter(st=>st.tile.direction===dir&&st.status==='active');
+    if(!active.length)return;
+    active.sort((a,b)=>Math.abs(this.elapsed-a.tile.timestamp)-Math.abs(this.elapsed-b.tile.timestamp));
+    const st=active[0],dt=this.elapsed-st.tile.timestamp,abs=Math.abs(dt);
+    let rating;
+    if(abs<=this.PW)rating='PERFECT';
+    else if(dt<0&&abs<=this.EW)rating='EARLY';
+    else if(abs<=this.LW)rating='LATE';
+    else if(abs<=this.MW)rating='LATE';
+    else return;
+    if(rating==='PERFECT'){playBeep(880,0.06,0.18);this.score+=100+this.combo*5;this.combo++;}
+    else{playBeep(660,0.06,0.12);this.score+=50;this.combo=Math.max(0,this.combo-1);}
+    this.flash(rating);
+    st.clicksLeft--;if(st.clicksLeft<=0){st.status='hit';this.activeTiles=this.activeTiles.filter(x=>x!==st);}
+    this.updateHUD();
+  },
+
+  registerMiss(){this.lives--;this.combo=0;playMissSound();this.flash('MISS');this.updateHUD();if(this.lives<=0)this.gameOver();},
+
+  flash(text){
+    const el=$('acc-flash');el.className='accuracy-flash';el.textContent=text;void el.offsetWidth;el.classList.add(text.toLowerCase(),'show');setTimeout(()=>el.classList.remove('show'),650);
+  },
+
+  updateHUD(){
+    $('hud-score').textContent=this.score;
+    for(let i=0;i<3;i++)$(`life-${i}`).classList.toggle('dead',i>=this.lives);
+    $('hud-combo').textContent=this.combo>2?`×${this.combo}`:'';
+  },
+
+  pause(){
+    if(!this.running)return;
+    this.paused=!this.paused;
+    if(this.paused){if(this.audio)this.audio.pause();$('game-pause-overlay').classList.add('show');}
+    else{if(this.audio)this.audio.play().catch(()=>{});$('game-pause-overlay').classList.remove('show');this.startTime=performance.now()-this.elapsed*1000;}
+  },
+
+  gameOver(){
+    this.running=false;cancelAnimationFrame(this.animId);if(this.audio){this.audio.pause();this.audio.currentTime=0;}
+    playDieSound();$('go-score-line').textContent=`score · ${this.score}`;setTimeout(()=>$('game-over-overlay').classList.add('show'),400);
+  },
+
+  win(){
+    this.running=false;cancelAnimationFrame(this.animId);if(this.audio)this.audio.pause();
+    playBeep(1320,0.5,0.15,'sine');$('win-score-line').textContent=`score · ${this.score}`;setTimeout(()=>$('game-win-overlay').classList.add('show'),500);
+  },
+
+  stop(){this.running=false;cancelAnimationFrame(this.animId);if(this.audio){this.audio.pause();this.audio.currentTime=0;}}
+};
+
+function startGame(lv){Game.init(lv);}
+window.addEventListener('resize',()=>{ if(currentScreen==='game')Game.resize(); });
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(currentScreen!=='game')return;
+  if(e.key==='Escape'){Game.pause();return;}
+  const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+  const dir=map[e.key]; if(dir){e.preventDefault();playBeep(880,0.04,0.12*(Settings.click/100));Game.handleKey(dir);}
+});
+
+// Mobile D-pad
+['up','down','left','right'].forEach(dir=>{
+  const btn=$('dpad-'+dir);
+  const fire=()=>{playBeep(880,0.04,0.1*(Settings.click/100));Game.handleKey(dir);};
+  btn.addEventListener('touchstart',e=>{e.preventDefault();fire();},{passive:false});
+  btn.addEventListener('mousedown',fire);
+});
+$('mobile-pause-btn').addEventListener('click',()=>Game.pause());
+$('mobile-pause-btn').addEventListener('touchstart',e=>{e.preventDefault();Game.pause();},{passive:false});
+
+// Overlay buttons
+$('go-retry').addEventListener('click',()=>{$('game-over-overlay').classList.remove('show');startGame(Game.level);});
+$('go-menu').addEventListener('click',()=>{Game.stop();$('game-over-overlay').classList.remove('show');showScreen('menu');});
+$('win-retry').addEventListener('click',()=>{$('game-win-overlay').classList.remove('show');startGame(Game.level);});
+$('win-menu').addEventListener('click',()=>{Game.stop();$('game-win-overlay').classList.remove('show');showScreen('menu');});
+$('pause-resume').addEventListener('click',()=>Game.pause());
+$('pause-menu').addEventListener('click',()=>{Game.stop();$('game-pause-overlay').classList.remove('show');showScreen('menu');});
+
+// ════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════
+$('btn-editor').addEventListener('click',()=>{
+  playBeep(660,0.05); Editor.init(); showScreen('editor');
+  showNotif('Custom levels generate JSON code to share with the owner to potentially become an official level.');
+});
+$('btn-levels').addEventListener('click',()=>{playBeep(660,0.05);renderLevels();showScreen('levels');});
+$('btn-settings').addEventListener('click',()=>{playBeep(660,0.05);showScreen('settings');});
+
+// Back buttons — these are correct event targets with z-index:60 so they always fire
+$('levels-back').addEventListener('click',  ()=>{playBeep(440,0.05);showScreen('menu');});
+$('settings-back').addEventListener('click',()=>{playBeep(440,0.05);showScreen('menu');});
+$('editor-back').addEventListener('click',  ()=>{playBeep(440,0.05);showScreen('menu');});
+
+$('load-json-btn').addEventListener('click',()=>$('load-json-input').click());
+$('load-json-input').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.levelName||!Array.isArray(d.tiles))throw 0;LevelStore.add(d);renderLevels();showNotif(`"${d.levelName}" loaded!`);}catch{showNotif('Invalid level JSON.');}};r.readAsText(f);e.target.value='';
+});
+</script>
+</body>
+</html>
