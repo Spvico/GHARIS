@@ -683,21 +683,21 @@ const LevelStore = {
 (function(){
   if(!LevelStore.getAll().find(l=>l.levelName==='Tutorial'))
     LevelStore.add({levelName:'Tutorial',songFile:'',description:'A simple introduction to GHARIS.',duration:{minutes:0,seconds:20,milliseconds:0},tiles:[
-      {id:'t1', position:{x:0,y:0}, direction:'right',multiClick:1,timestamp:1.0},
-      {id:'t2', position:{x:1,y:0}, direction:'right',multiClick:1,timestamp:1.8},
-      {id:'t3', position:{x:2,y:0}, direction:'up',   multiClick:1,timestamp:2.6},
-      {id:'t4', position:{x:2,y:-1},direction:'up',   multiClick:2,timestamp:3.4},
-      {id:'t5', position:{x:2,y:-2},direction:'left', multiClick:1,timestamp:4.5},
-      {id:'t6', position:{x:1,y:-2},direction:'left', multiClick:1,timestamp:5.2},
-      {id:'t7', position:{x:0,y:-2},direction:'down', multiClick:1,timestamp:6.0},
-      {id:'t8', position:{x:0,y:-1},direction:'right',multiClick:1,timestamp:7.0},
-      {id:'t9', position:{x:1,y:-1},direction:'up',   multiClick:1,timestamp:7.8},
-      {id:'t10',position:{x:1,y:-2},direction:'left', multiClick:1,timestamp:9.0},
-      {id:'t11',position:{x:0,y:-2},direction:'down', multiClick:2,timestamp:10.0},
-      {id:'t12',position:{x:0,y:-1},direction:'right',multiClick:1,timestamp:11.5},
-      {id:'t13',position:{x:1,y:-1},direction:'right',multiClick:1,timestamp:12.2},
-      {id:'t14',position:{x:2,y:-1},direction:'down', multiClick:1,timestamp:13.0},
-      {id:'t15',position:{x:2,y:0}, direction:'left', multiClick:1,timestamp:14.0},
+      {id:'t1', position:{x:0,y:0}, direction:'right',timestamp:1.0},
+      {id:'t2', position:{x:1,y:0}, direction:'right',timestamp:1.8},
+      {id:'t3', position:{x:2,y:0}, direction:'up',   timestamp:2.6},
+      {id:'t4', position:{x:2,y:-1},direction:'up',   timestamp:3.4},
+      {id:'t5', position:{x:2,y:-2},direction:'left', timestamp:4.5},
+      {id:'t6', position:{x:1,y:-2},direction:'left', timestamp:5.2},
+      {id:'t7', position:{x:0,y:-2},direction:'down', timestamp:6.0},
+      {id:'t8', position:{x:0,y:-1},direction:'right',timestamp:7.0},
+      {id:'t9', position:{x:1,y:-1},direction:'up',   timestamp:7.8},
+      {id:'t10',position:{x:1,y:-2},direction:'left', timestamp:9.0},
+      {id:'t11',position:{x:0,y:-2},direction:'down', timestamp:10.0},
+      {id:'t12',position:{x:0,y:-1},direction:'right',timestamp:11.5},
+      {id:'t13',position:{x:1,y:-1},direction:'right',timestamp:12.2},
+      {id:'t14',position:{x:2,y:-1},direction:'down', timestamp:13.0},
+      {id:'t15',position:{x:2,y:0}, direction:'left', timestamp:14.0},
     ]});
 })();
 
@@ -837,35 +837,22 @@ const Editor = {
     this.tiles[this.selectedKey].timestamp=t;
     $('ed-tile-ts').value=t; this.updatePanel(); this.render(); this._scheduleAutosave();
     showNotif('Stamped '+this._fmt(t)+' → tile',1200);
+    if(this.autoSwitch) this._autoAdvance();
+  },
 
-    // Auto-switch: move to the next tile that still has timestamp 0 (or the lowest unset one)
-    if(this.autoSwitch){
-      // Build sorted list of all tile keys, find the one after current that has ts=0
-      const allTiles=Object.entries(this.tiles)
-        .map(([k,v])=>({k,ts:v.timestamp}))
-        .sort((a,b)=>a.ts-b.ts);
-
-      // Find tiles still at 0 (unset), prefer the one that was placed after current
-      const unset=Object.entries(this.tiles).filter(([k,v])=>k!==this.selectedKey&&v.timestamp===0);
-
-      let nextKey=null;
-      if(unset.length>0){
-        // Pick the first unset tile (by insertion order — lastKey is the most recently placed)
-        // Sort unset by id string order so we follow placement order
-        unset.sort((a,b)=>a[1].id.localeCompare(b[1].id));
-        nextKey=unset[0][0];
-      } else {
-        // All tiles have timestamps — pick the next one after current sorted by timestamp
-        const sorted=Object.entries(this.tiles).sort((a,b)=>a[1].timestamp-b[1].timestamp);
-        const idx=sorted.findIndex(([k])=>k===this.selectedKey);
-        if(idx>=0&&idx<sorted.length-1) nextKey=sorted[idx+1][0];
-      }
-
-      if(nextKey){
-        this.selectTile(nextKey);
-        this.render();
-      }
+  _autoAdvance(){
+    const unset=Object.entries(this.tiles)
+      .filter(([k,v])=>k!==this.selectedKey&&v.timestamp===0)
+      .sort((a,b)=>a[1].id.localeCompare(b[1].id));
+    let nextKey=null;
+    if(unset.length>0){
+      nextKey=unset[0][0];
+    } else {
+      const sorted=Object.entries(this.tiles).sort((a,b)=>a[1].timestamp-b[1].timestamp);
+      const idx=sorted.findIndex(([k])=>k===this.selectedKey);
+      if(idx>=0&&idx<sorted.length-1) nextKey=sorted[idx+1][0];
     }
+    if(nextKey){ this.selectTile(nextKey); this.render(); }
   },
 
   // ── TIMELINE ──
@@ -970,9 +957,9 @@ const Editor = {
     this._previewResize=()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
     window.addEventListener('resize',this._previewResize);
 
-    // Build sorted tile list with per-tile state (clicksLeft) for accuracy flash
+    // Build sorted tile list for preview
     const sorted=Object.values(this.tiles).slice().sort((a,b)=>a.timestamp-b.timestamp);
-    this._prevTileStates=sorted.map(t=>({tile:t,clicksLeft:t.multiClick||1,status:'pending'}));
+    this._prevTileStates=sorted.map(t=>({tile:t,status:'pending'}));
     this._prevNextIdx=0; this._prevActive=[];
     this._prevScore=0; this._prevCombo=0;
 
@@ -1055,11 +1042,6 @@ const Editor = {
       if(tile.direction==='up')   {ctx.moveTo(-h,d);ctx.lineTo(0,-d);ctx.lineTo(h,d);}
       if(tile.direction==='down') {ctx.moveTo(-h,-d);ctx.lineTo(0,d);ctx.lineTo(h,-d);}
       ctx.stroke();
-
-      // Multi-click dots
-      const tot=(item.tile?item.tile.multiClick:tile.multiClick)||1;
-      const left=item.clicksLeft!=null?item.clicksLeft:tot;
-      if(tot>1){ for(let i=0;i<tot;i++){ctx.fillStyle=i<left?'#fff':'#333';ctx.fillRect(T/2-8-i*10,-T/2+4,6,6);} }
       ctx.restore();
 
       // Shrinking ring — lands exactly on tile border at dt=0
@@ -1130,13 +1112,18 @@ const Editor = {
   // ── TILES ──
   tileKey(x,y){ return `${x},${y}`; },
 
-  placeTile(x,y,dir='right',multi=1,ts=0){
+  placeTile(x,y,dir='right',ts=0){
     const k=this.tileKey(x,y); if(this.tiles[k]) return;
-    this.tiles[k]={id:'t'+Date.now()+Math.random().toString(36).slice(2,5),position:{x,y},direction:dir,multiClick:multi,timestamp:ts};
+    this.tiles[k]={id:'t'+Date.now()+Math.random().toString(36).slice(2,5),position:{x,y},direction:dir,timestamp:ts};
     this.lastKey=k; this._scheduleAutosave();
   },
 
-  deleteTile(k){ delete this.tiles[k]; if(this.lastKey===k)this.lastKey=null; if(this.selectedKey===k)this.selectedKey=null; this._scheduleAutosave(); },
+  deleteTile(k){
+    delete this.tiles[k];
+    if(this.lastKey===k)this.lastKey=null;
+    if(this.selectedKey===k)this.selectedKey=null;
+    this._scheduleAutosave();
+  },
 
   nKey(x,y,dir){ const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[dir]; return this.tileKey(x+d[0],y+d[1]); },
 
@@ -1152,13 +1139,13 @@ const Editor = {
       $('multi-info-hint').textContent='Select a tile to see';
       return;
     }
-    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>Time:</strong> ${this._fmt(tile.timestamp)}`;
+    const neighbours=['up','down','left','right'].filter(d=>!!this.tiles[this.nKey(tile.position.x,tile.position.y,d)]).length;
+    const type=neighbours===0?'Isolated':neighbours===1?'End':neighbours===2?'Through':'Junction (×'+neighbours+')';
+    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>Type:</strong> ${type}<br><strong>Time:</strong> ${this._fmt(tile.timestamp)}`;
     ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.toggle('active',tile.direction===d));
     $('ed-tile-ts').value=tile.timestamp;
-    // Multi-click info
-    const mc=tile.multiClick||1;
-    $('multi-info-badge').textContent='× '+mc;
-    $('multi-info-hint').textContent=mc>1?'Double tap — placed from a mid-path tile':'Single tap — placed from an end tile';
+    $('multi-info-badge').textContent=type;
+    $('multi-info-hint').textContent='Hit once — all tiles are single-press';
   },
 
   render(){
@@ -1166,7 +1153,7 @@ const Editor = {
     const keys=Object.keys(this.tiles);
     if(!keys.length){
       const btn=document.createElement('div'); btn.style.cssText='width:32px;height:32px;border:1px solid #333;background:#1e1e1e;color:#888;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-      btn.textContent='+'; btn.addEventListener('click',()=>{this.placeTile(0,0,'right',1,0);this.render();this._centerOnTiles();}); canvas.appendChild(btn); return;
+      btn.textContent='+'; btn.addEventListener('click',()=>{this.placeTile(0,0,'right',0);this.render();this._centerOnTiles();}); canvas.appendChild(btn); return;
     }
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     keys.forEach(k=>{const t=this.tiles[k];minX=Math.min(minX,t.position.x);maxX=Math.max(maxX,t.position.x);minY=Math.min(minY,t.position.y);maxY=Math.max(maxY,t.position.y);});
@@ -1179,28 +1166,20 @@ const Editor = {
         const key=this.tileKey(col,row), tile=this.tiles[key];
         const cell=document.createElement('div'); cell.className='grid-cell';
         if(tile){
+          const isLast=key===this.lastKey, isSel=key===this.selectedKey;
           const blk=document.createElement('div');
-          blk.className='tile-block'+(key===this.lastKey?' last-tile':'')+(key===this.selectedKey?' sel-tile':'');
+          blk.className='tile-block'+(isLast?' last-tile':'')+(isSel?' sel-tile':'');
           blk.textContent=arrow[tile.direction]||'?';
+
           // Timestamp label under tile
           const tsLbl=document.createElement('div');
           tsLbl.style.cssText='position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:7px;color:#555;font-family:monospace;pointer-events:none;white-space:nowrap;';
           tsLbl.textContent=tile.timestamp>0?tile.timestamp.toFixed(2):'—';
           blk.appendChild(tsLbl);
-          if(tile.multiClick>1){const b=document.createElement('div');b.className='multi-badge';b.textContent=tile.multiClick;blk.appendChild(b);}
+
           blk.addEventListener('click',e=>{e.stopPropagation();this.selectTile(key);this.render();});
-          // Double-click visual: two small squares in top-right corner
-          if(tile.multiClick>1){
-            const b=document.createElement('div');
-            b.style.cssText='position:absolute;top:3px;right:3px;display:flex;gap:2px;pointer-events:none;';
-            for(let d=0;d<2;d++){
-              const dot=document.createElement('div');
-              dot.style.cssText=`width:5px;height:5px;background:${key===this.lastKey?'var(--bg)':'var(--white)'};`;
-              b.appendChild(dot);
-            }
-            blk.appendChild(b);
-          }
           cell.appendChild(blk);
+
           ['up','down','left','right'].forEach(dir=>{
             const nk=this.nKey(col,row,dir);
             if(!this.tiles[nk]){
@@ -1209,13 +1188,7 @@ const Editor = {
                 e.stopPropagation();
                 const[nx,ny]=nk.split(',').map(Number);
                 const autoTs=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:Math.round((tile.timestamp+0.8)*100)/100;
-                // A tile is "non-end" if it has ANY existing neighbour in any direction
-                // (meaning it sits in the middle of a path). Adding from it = double-click tile.
-                const neighbourCount=['up','down','left','right'].filter(d=>{
-                  const nk2=this.nKey(col,row,d); return !!this.tiles[nk2];
-                }).length;
-                const isNonEnd=neighbourCount>=1; // already connected to at least one tile
-                this.placeTile(nx,ny,dir,isNonEnd?2:1,autoTs);
+                this.placeTile(nx,ny,dir,autoTs);
                 this.selectTile(this.tileKey(nx,ny)); this.render();
               }); cell.appendChild(ab);
             }
@@ -1228,7 +1201,7 @@ const Editor = {
   },
 
   toJSON(){
-    const tiles=Object.values(this.tiles).map(t=>({id:t.id,position:t.position,direction:t.direction,multiClick:t.multiClick,timestamp:t.timestamp}));
+    const tiles=Object.values(this.tiles).map(t=>({id:t.id,position:t.position,direction:t.direction,timestamp:t.timestamp}));
     tiles.sort((a,b)=>a.timestamp-b.timestamp);
     return{levelName:$('ed-level-name').value||'Untitled',songFile:$('ed-song-name').value||'',description:($('ed-description')?$('ed-description').value:'')||'',duration:{minutes:parseInt($('ed-dur-min').value)||0,seconds:parseInt($('ed-dur-sec').value)||0,milliseconds:parseInt($('ed-dur-ms').value)||0},tiles};
   },
@@ -1238,7 +1211,11 @@ const Editor = {
     $('ed-level-name').value=data.levelName||'My Level'; $('ed-song-name').value=data.songFile||'';
     if($('ed-description')) $('ed-description').value=data.description||'';
     if(data.duration){$('ed-dur-min').value=data.duration.minutes||0;$('ed-dur-sec').value=data.duration.seconds||0;$('ed-dur-ms').value=data.duration.milliseconds||0;}
-    (data.tiles||[]).forEach(t=>{const k=this.tileKey(t.position.x,t.position.y);this.tiles[k]={id:t.id||('t'+Math.random().toString(36).slice(2)),position:{x:t.position.x,y:t.position.y},direction:t.direction||'right',multiClick:t.multiClick||1,timestamp:t.timestamp||0};this.lastKey=k;});
+    (data.tiles||[]).forEach(t=>{
+      const k=this.tileKey(t.position.x,t.position.y);
+      this.tiles[k]={id:t.id||('t'+Math.random().toString(36).slice(2)),position:{x:t.position.x,y:t.position.y},direction:t.direction||'right',timestamp:t.timestamp||0};
+      this.lastKey=k;
+    });
   },
 
   fromJSON(data){ this._loadData(data); this.render(); this._centerOnTiles(); this._scheduleAutosave(); }
@@ -1337,7 +1314,8 @@ const Game={
     this.running=false;this.paused=false;this.elapsed=0;this.nextTileIdx=0;this.activeTiles=[];
     this.camX=0;this.camY=0;this.camTX=0;this.camTY=0;
     this.tiles=(lv.tiles||[]).map(t=>({...t})).sort((a,b)=>a.timestamp-b.timestamp);
-    this.tileStates=this.tiles.map(t=>({tile:t,clicksLeft:t.multiClick||1,status:'pending'}));
+    this.tileStates=this.tiles.map(t=>({tile:t,status:'pending'}));
+
     const d=lv.duration||{}; this.totalDuration=(d.minutes||0)*60+(d.seconds||0)+(d.milliseconds||0)/1000||60;
     this.canvas=$('game-canvas');this.ctx=this.canvas.getContext('2d');this.resize();
     this.audio=null;
@@ -1373,7 +1351,7 @@ const Game={
     this.elapsed=(now-this.startTime)/1000;
 
     // Spawn
-    while(this.nextTileIdx<this.tiles.length){
+    while(this.nextTileIdx<this.tileStates.length){
       const st=this.tileStates[this.nextTileIdx];
       if(st.tile.timestamp-this.APPEAR<=this.elapsed){if(st.status==='pending'){st.status='active';this.activeTiles.push(st);}this.nextTileIdx++;}else break;
     }
@@ -1409,7 +1387,6 @@ const Game={
 
     // Active tiles — full weight, but weight more toward the tile that's about to hit
     this.activeTiles.forEach(st=>{
-      // Tiles closer to their perfect moment get higher weight so cam leans toward them
       const dt=Math.abs(this.elapsed-st.tile.timestamp);
       const tileW=clamp(1.5-dt*2,0.2,1.5);
       wx+=st.tile.position.x*G*tileW;
@@ -1417,18 +1394,15 @@ const Game={
       w+=tileW;
     });
 
-    // Lookahead: the next tile(s) that haven't appeared yet — partial weight
-    // gives the camera a head start before they pop in
     let lookahead=0;
-    for(let i=this.nextTileIdx; i<this.tiles.length&&lookahead<2; i++){
-      const t=this.tiles[i];
-      const timeUntil=t.timestamp-this.elapsed;
-      // Start pulling toward it up to (APPEAR + 0.8)s before it appears
+    for(let i=this.nextTileIdx;i<this.tileStates.length&&lookahead<2;i++){
+      const st=this.tileStates[i];
+      const timeUntil=st.tile.timestamp-this.elapsed;
       const pullWindow=this.APPEAR+0.8;
       if(timeUntil>pullWindow) break;
       const lw=clamp((pullWindow-timeUntil)/pullWindow,0,1)*0.5;
-      wx+=t.position.x*G*lw;
-      wy+=t.position.y*G*lw;
+      wx+=st.tile.position.x*G*lw;
+      wy+=st.tile.position.y*G*lw;
       w+=lw;
       lookahead++;
     }
@@ -1479,27 +1453,21 @@ const Game={
       const tile=st.tile,dtime=this.elapsed-tile.timestamp;
       const tx=cx+tile.position.x*G, ty=cy+tile.position.y*G;
 
-      // Tile square + arrow
       ctx.save();ctx.translate(tx,ty);
       ctx.globalAlpha=clamp((dtime-appear)/0.3,0,1);
       ctx.strokeStyle='#ffffff';ctx.lineWidth=2;
       ctx.strokeRect(-T/2,-T/2,T,T);
       this._drawArrow(ctx,tile.direction,T,'#ffffff');
-      if(st.clicksLeft>1||tile.multiClick>1){
-        const tot=tile.multiClick||1;
-        for(let i=0;i<tot;i++){ctx.fillStyle=i<st.clicksLeft?'#fff':'#333';ctx.fillRect(T/2-8-i*10,-T/2+4,6,6);}
-      }
       ctx.restore();
 
       // Shrinking ring
       if(dtime>=appear&&dtime<=this.MW+0.1){
-        const RING_START=T*2.6, RING_END=T;
+        const RING_START=T*2.6,RING_END=T;
         const prog=clamp((dtime-appear)/(-appear),0,1);
         const rSize=RING_START-(RING_START-RING_END)*prog;
         let rA=1; if(dtime>0) rA=clamp(1-(dtime/this.MW)*1.3,0,1);
         ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=rA;
-        ctx.strokeStyle='#ffffff';
-        ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);
+        ctx.strokeStyle='#ffffff';ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);
         ctx.strokeRect(-rSize/2,-rSize/2,rSize,rSize);
         ctx.restore();
       }
@@ -1511,31 +1479,23 @@ const Game={
 
     const active=this.activeTiles.filter(st=>st.tile.direction===dir&&st.status==='active');
 
-    // No visible tile for this direction at all → wild press → miss
-    if(!active.length){
-      this.registerMiss();
-      return;
-    }
+    if(!active.length){ this.registerMiss(); return; }
 
     active.sort((a,b)=>Math.abs(this.elapsed-a.tile.timestamp)-Math.abs(this.elapsed-b.tile.timestamp));
     const st=active[0],dt=this.elapsed-st.tile.timestamp,abs=Math.abs(dt);
 
     let rating;
-    if(abs<=this.PW)                  rating='PERFECT';
-    else if(dt<0 && abs<=this.EW)     rating='EARLY';
-    else if(dt>=0 && abs<=this.LW)    rating='LATE';
-    else if(abs<=this.MW)             rating='LATE';
-    else{
-      // Tile is visible but press was way outside any window → miss
-      this.registerMiss();
-      return;
-    }
+    if(abs<=this.PW)              rating='PERFECT';
+    else if(dt<0&&abs<=this.EW)   rating='EARLY';
+    else if(dt>=0&&abs<=this.LW)  rating='LATE';
+    else if(abs<=this.MW)         rating='LATE';
+    else{ this.registerMiss(); return; }
 
     if(rating==='PERFECT'){playBeep(880,0.06,0.18);this.score+=100+this.combo*5;this.combo++;}
     else{playBeep(660,0.06,0.12);this.score+=50;this.combo=Math.max(0,this.combo-1);}
     this.flash(rating);
-    st.clicksLeft--;
-    if(st.clicksLeft<=0){st.status='hit';this.activeTiles=this.activeTiles.filter(x=>x!==st);}
+    st.status='hit';
+    this.activeTiles=this.activeTiles.filter(x=>x!==st);
     this.updateHUD();
   },
 
@@ -1577,7 +1537,7 @@ const Game={
     const pct=Math.round(done/total*100);
     const key='gharis_best_'+this.level.levelName;
     const prev=parseInt(localStorage.getItem(key)||'0');
-    if(pct>prev) localStorage.setItem(key, pct);
+    if(pct>prev) localStorage.setItem(key,pct);
   },
 
   stop(){this.running=false;cancelAnimationFrame(this.animId);if(this.audio){this.audio.pause();this.audio.currentTime=0;}}
