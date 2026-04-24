@@ -124,6 +124,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .quick-ts-row .editor-input{flex:1;}
 .ts-stamp-btn{flex-shrink:0;background:var(--white);border:none;color:var(--bg);font-family:var(--font-head);font-size:9px;letter-spacing:0.2em;padding:7px 9px;cursor:pointer;text-transform:uppercase;transition:var(--tr);white-space:nowrap;}
 .ts-stamp-btn:hover{background:#ccc;}
+.auto-switch-row{margin-top:5px;}
+.auto-switch-btn{width:100%;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:var(--font-head);font-size:9px;letter-spacing:0.25em;text-transform:uppercase;padding:6px 8px;cursor:pointer;transition:var(--tr);text-align:center;}
+.auto-switch-btn:hover{border-color:var(--white);color:var(--white);}
+.auto-switch-btn.on{background:var(--white);color:var(--bg);border-color:var(--white);}
 
 /* Autosave badge */
 .autosave-badge{font-size:8px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-top:6px;}
@@ -172,13 +176,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .timeline-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--white);pointer-events:none;z-index:5;transform:translateX(0);}
 .timeline-playhead{position:absolute;top:0;width:1px;background:#444;pointer-events:none;z-index:4;}
 
-/* Preview panel */
-.preview-panel{position:absolute;top:65px;left:260px;right:0;bottom:130px;background:rgba(10,10,10,0.97);z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;}
+/* Preview — true fullscreen overlay */
+.preview-panel{position:fixed;inset:0;background:#0a0a0a;z-index:200;display:none;flex-direction:column;}
 .preview-panel.show{display:flex;}
-.preview-canvas{border:1px solid var(--border);}
-.preview-close-btn{position:absolute;top:12px;right:14px;background:transparent;border:1px solid var(--border);color:var(--white);font-family:var(--font-head);font-size:10px;letter-spacing:0.25em;padding:7px 14px;cursor:pointer;text-transform:uppercase;transition:var(--tr);}
-.preview-close-btn:hover{background:var(--white);color:var(--bg);}
-.preview-hint{font-size:9px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;margin-top:10px;}
+#preview-canvas-fs{position:absolute;inset:0;width:100%;height:100%;}
+.preview-hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:18px 28px;z-index:210;pointer-events:none;}
+.preview-hud-left{display:flex;flex-direction:column;gap:3px;}
+.preview-level-name{font-family:var(--font-head);font-size:13px;letter-spacing:0.3em;text-transform:uppercase;color:var(--dim);}
+.preview-time{font-family:var(--font-mono);font-size:11px;color:var(--dim);letter-spacing:0.08em;}
+.preview-hud-center{position:absolute;left:50%;transform:translateX(-50%);font-family:var(--font-head);font-size:38px;font-weight:900;letter-spacing:0.2em;opacity:0;pointer-events:none;}
+@keyframes prevFlash{0%{opacity:1;transform:translateX(-50%) scale(1.1);}60%{opacity:1;transform:translateX(-50%) scale(1);}100%{opacity:0;transform:translateX(-50%) scale(0.95);}}
+.preview-hud-center.show{animation:prevFlash 0.6s ease forwards;}
+.preview-exit-btn{pointer-events:all;font-family:var(--font-head);font-size:11px;letter-spacing:0.3em;text-transform:uppercase;padding:9px 18px;border:1px solid var(--border);background:rgba(10,10,10,0.8);color:var(--white);cursor:pointer;transition:var(--tr);}
+.preview-exit-btn:hover,.preview-exit-btn:active{background:var(--white);color:var(--bg);}
 
 /* ══ GAME ══ */
 #game{background:var(--bg);}
@@ -389,6 +399,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
                 <input class="editor-input" id="ed-tile-ts" type="number" step="0.01" placeholder="seconds" min="0">
                 <button class="ts-stamp-btn" id="stamp-ts-btn" title="Set to current song position">⊙ Stamp</button>
               </div>
+              <div class="auto-switch-row">
+                <button class="auto-switch-btn" id="auto-switch-btn" title="After stamping, automatically select the next tile">Auto-Switch: OFF</button>
+              </div>
             </div>
             <button class="editor-btn danger" id="delete-tile-btn">Delete Tile</button>
           </div>
@@ -444,11 +457,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
       </div>
     </div>
 
-    <!-- Level Preview Overlay -->
+    <!-- Level Preview — fullscreen game overlay -->
     <div class="preview-panel" id="preview-panel">
-      <button class="preview-close-btn" id="preview-close-btn">✕ Close</button>
-      <canvas class="preview-canvas" id="preview-canvas" width="640" height="360"></canvas>
-      <div class="preview-hint">Preview — press P or close to exit · song plays in sync</div>
+      <canvas id="preview-canvas-fs"></canvas>
+      <div class="preview-hud">
+        <div class="preview-hud-left">
+          <div class="preview-level-name" id="prev-level-name">PREVIEW</div>
+          <div class="preview-time" id="prev-time">0:00.000</div>
+        </div>
+        <div class="preview-hud-center" id="preview-hud-center"></div>
+        <button class="preview-exit-btn" id="preview-close-btn">✕ Exit Preview</button>
+      </div>
+      <div class="progress-bar-wrap" style="z-index:60;"><div class="progress-bar-fill" id="prev-progress"></div></div>
     </div>
 
   </div>
@@ -720,6 +740,8 @@ const Editor = {
   _previewRunning:false, _previewRaf:null,
   // Autosave
   _autoSaveTimer:null,
+  // Auto-switch
+  autoSwitch:false,
 
   // ── INIT ──
   init(){
@@ -811,7 +833,36 @@ const Editor = {
     const t=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:0;
     this.tiles[this.selectedKey].timestamp=t;
     $('ed-tile-ts').value=t; this.updatePanel(); this.render(); this._scheduleAutosave();
-    showNotif('Stamped '+this._fmt(t)+' → tile',1500);
+    showNotif('Stamped '+this._fmt(t)+' → tile',1200);
+
+    // Auto-switch: move to the next tile that still has timestamp 0 (or the lowest unset one)
+    if(this.autoSwitch){
+      // Build sorted list of all tile keys, find the one after current that has ts=0
+      const allTiles=Object.entries(this.tiles)
+        .map(([k,v])=>({k,ts:v.timestamp}))
+        .sort((a,b)=>a.ts-b.ts);
+
+      // Find tiles still at 0 (unset), prefer the one that was placed after current
+      const unset=Object.entries(this.tiles).filter(([k,v])=>k!==this.selectedKey&&v.timestamp===0);
+
+      let nextKey=null;
+      if(unset.length>0){
+        // Pick the first unset tile (by insertion order — lastKey is the most recently placed)
+        // Sort unset by id string order so we follow placement order
+        unset.sort((a,b)=>a[1].id.localeCompare(b[1].id));
+        nextKey=unset[0][0];
+      } else {
+        // All tiles have timestamps — pick the next one after current sorted by timestamp
+        const sorted=Object.entries(this.tiles).sort((a,b)=>a[1].timestamp-b[1].timestamp);
+        const idx=sorted.findIndex(([k])=>k===this.selectedKey);
+        if(idx>=0&&idx<sorted.length-1) nextKey=sorted[idx+1][0];
+      }
+
+      if(nextKey){
+        this.selectTile(nextKey);
+        this.render();
+      }
+    }
   },
 
   // ── TIMELINE ──
@@ -880,53 +931,108 @@ const Editor = {
     if(this._previewRunning) return;
     $('preview-panel').classList.add('show');
     this._previewRunning=true;
-    const canvas=$('preview-canvas');
-    const panel=$('preview-panel');
-    const pw=panel.clientWidth-80, ph=panel.clientHeight-80;
-    const aspect=16/9; let cw=pw, ch=pw/aspect;
-    if(ch>ph){ch=ph; cw=ph*aspect;}
-    canvas.width=Math.max(320,Math.floor(cw)); canvas.height=Math.max(180,Math.floor(ch));
+
+    // Size canvas to fill screen
+    const canvas=$('preview-canvas-fs');
+    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+
+    // Resize handler
+    this._previewResize=()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
+    window.addEventListener('resize',this._previewResize);
+
+    // Build sorted tile list with per-tile state (clicksLeft) for accuracy flash
+    const sorted=Object.values(this.tiles).slice().sort((a,b)=>a.timestamp-b.timestamp);
+    this._prevTileStates=sorted.map(t=>({tile:t,clicksLeft:t.multiClick||1,status:'pending'}));
+    this._prevNextIdx=0; this._prevActive=[];
+    this._prevScore=0; this._prevCombo=0;
+
+    // Total duration for progress bar
+    const d=this.toJSON().duration;
+    this._prevDuration=(d.minutes||0)*60+(d.seconds||0)+(d.milliseconds||0)/1000 || (sorted.length?sorted[sorted.length-1].timestamp+3:30);
+
+    // Start audio
     if(this.audioEl){ this.audioEl.currentTime=0; this.audioEl.play().catch(()=>{}); this.audioPlaying=true; this._updatePlayBtn(); this._startAudioRAF(); }
-    const startWall=performance.now();
+    this._previewWallStart=performance.now();
+
+    $('prev-level-name').textContent=$('ed-level-name').value||'PREVIEW';
+
     const loop=()=>{
       if(!this._previewRunning) return;
-      const elapsed=this.audioEl?this.audioEl.currentTime:(performance.now()-startWall)/1000;
-      this._drawPreview(canvas,elapsed);
+      const elapsed=this.audioEl?this.audioEl.currentTime:(performance.now()-this._previewWallStart)/1000;
+      this._tickPreview(canvas,elapsed);
       this._previewRaf=requestAnimationFrame(loop);
     };
     loop();
   },
 
   stopPreview(){
-    this._previewRunning=false; cancelAnimationFrame(this._previewRaf);
+    this._previewRunning=false;
+    cancelAnimationFrame(this._previewRaf);
+    window.removeEventListener('resize',this._previewResize);
     $('preview-panel').classList.remove('show');
     if(this.audioEl){ this.audioEl.pause(); this.audioEl.currentTime=0; this.audioPlaying=false; this._updatePlayBtn(); cancelAnimationFrame(this._rafAudio); }
     $('audio-time-display').textContent='0:00.000'; $('ts-hint').textContent='0:00.000';
     $('timeline-cursor').style.left='0px'; this._drawTimeline();
   },
 
+  _tickPreview(canvas,elapsed){
+    const APPEAR=1.5, MW=0.35;
+
+    // Spawn tiles
+    while(this._prevNextIdx<this._prevTileStates.length){
+      const st=this._prevTileStates[this._prevNextIdx];
+      if(st.tile.timestamp-APPEAR<=elapsed){ if(st.status==='pending'){st.status='active';this._prevActive.push(st);} this._prevNextIdx++; } else break;
+    }
+    // Auto-miss passed tiles (preview: no lives, just visual)
+    this._prevActive.forEach(st=>{ if(st.status==='active'&&elapsed-st.tile.timestamp>MW+0.05){ st.status='missed'; } });
+    this._prevActive=this._prevActive.filter(st=>st.status==='active');
+
+    // Update HUD
+    $('prev-time').textContent=this._fmt(elapsed);
+    $('prev-progress').style.width=clamp(elapsed/this._prevDuration*100,0,100)+'%';
+
+    this._drawPreview(canvas,elapsed);
+  },
+
   _drawPreview(canvas,elapsed){
     const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
-    ctx.clearRect(0,0,W,H); ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,W,H);
+    ctx.clearRect(0,0,W,H);
+
+    // Background grid
     ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1;
     for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-    const cx=W/2,cy=H/2,T=50,G=Math.min(W,H)/7,APPEAR=1.5,MW=0.35;
-    const appear=-APPEAR, RING_START=T*2.6;
-    Object.values(this.tiles).forEach(tile=>{
+
+    const APPEAR=1.5,MW=0.35,appear=-APPEAR;
+    const cx=W/2,cy=H/2,T=64,G=80,RING_START=T*2.6;
+
+    (this._prevActive||Object.values(this.tiles)).forEach(item=>{
+      const tile=item.tile||item;
       const dt=elapsed-tile.timestamp;
       if(dt<appear||dt>MW+0.3) return;
       const tx=cx+tile.position.x*G, ty=cy+tile.position.y*G;
       const alpha=clamp((dt-appear)/0.3,0,1);
+
+      // Tile square
       ctx.save(); ctx.translate(tx,ty); ctx.globalAlpha=alpha;
       ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(-T/2,-T/2,T,T);
+
+      // Chevron arrow
       const h=T*0.38,d=T*0.22;
-      ctx.lineWidth=T*0.10; ctx.lineCap='square'; ctx.lineJoin='miter'; ctx.beginPath();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=T*0.10; ctx.lineCap='square'; ctx.lineJoin='miter'; ctx.beginPath();
       if(tile.direction==='right'){ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);}
       if(tile.direction==='left') {ctx.moveTo(d,-h);ctx.lineTo(-d,0);ctx.lineTo(d,h);}
       if(tile.direction==='up')   {ctx.moveTo(-h,d);ctx.lineTo(0,-d);ctx.lineTo(h,d);}
       if(tile.direction==='down') {ctx.moveTo(-h,-d);ctx.lineTo(0,d);ctx.lineTo(h,-d);}
-      ctx.stroke(); ctx.restore();
+      ctx.stroke();
+
+      // Multi-click dots
+      const tot=(item.tile?item.tile.multiClick:tile.multiClick)||1;
+      const left=item.clicksLeft!=null?item.clicksLeft:tot;
+      if(tot>1){ for(let i=0;i<tot;i++){ctx.fillStyle=i<left?'#fff':'#333';ctx.fillRect(T/2-8-i*10,-T/2+4,6,6);} }
+      ctx.restore();
+
+      // Shrinking ring — lands exactly on tile border at dt=0
       const prog=clamp((dt-appear)/(-appear),0,1);
       const rSize=RING_START-(RING_START-T)*prog;
       let rA=1; if(dt>0) rA=clamp(1-(dt/MW)*1.3,0,1);
@@ -934,8 +1040,13 @@ const Editor = {
       ctx.strokeStyle='#fff'; ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);
       ctx.strokeRect(-rSize/2,-rSize/2,rSize,rSize); ctx.restore();
     });
-    ctx.fillStyle='#444'; ctx.font='10px "Space Mono",monospace';
-    ctx.fillText(this._fmt(elapsed),8,16);
+  },
+
+  _prevFlash(text,color='#fff'){
+    const el=$('preview-hud-center'); if(!el) return;
+    el.textContent=text; el.style.color=color;
+    el.className='preview-hud-center'; void el.offsetWidth;
+    el.classList.add('show');
   },
 
   // ── PAN / ZOOM ──
@@ -973,6 +1084,7 @@ const Editor = {
       if(currentScreen!=='editor') return;
       if(e.target.tagName==='INPUT') return;
       switch(e.key){
+        case 'Escape': if(this._previewRunning){this.stopPreview();return;} break;
         case ' ': e.preventDefault(); this.togglePlay(); break;
         case 'm': case 'M': e.preventDefault(); this.stampTime(); break;
         case 'Delete': case 'Backspace': if(this.selectedKey){this.deleteTile(this.selectedKey);this.render();}  break;
@@ -1098,8 +1210,14 @@ $('ed-tile-ts').addEventListener('change',()=>{
 
 $('stamp-ts-btn').addEventListener('click',()=>Editor.stampTime());
 $('audio-mark-btn').addEventListener('click',()=>Editor.stampTime());
+$('auto-switch-btn').addEventListener('click',()=>{
+  Editor.autoSwitch=!Editor.autoSwitch;
+  const btn=$('auto-switch-btn');
+  btn.textContent='Auto-Switch: '+(Editor.autoSwitch?'ON':'OFF');
+  btn.classList.toggle('on',Editor.autoSwitch);
+});
 $('delete-tile-btn').addEventListener('click',()=>{ if(!Editor.selectedKey) return; Editor.deleteTile(Editor.selectedKey); Editor.render(); showNotif('Tile deleted.'); });
-$('clear-grid-btn').addEventListener('click',()=>{ if(!confirm('Clear the entire grid?')) return; Editor.tiles={}; Editor.lastKey=null; Editor.selectedKey=null; Editor.render(); Editor._scheduleAutosave(); showNotif('Grid cleared.'); });
+$('clear-grid-btn').addEventListener('click',()=>{ if(!confirm('Clear the entire grid?')) return; Editor.tiles={}; Editor.lastKey=null; Editor.selectedKey=null; Editor.placeTile(0,0,'right',1,0); Editor.render(); Editor._centerOnTiles(); Editor._scheduleAutosave(); showNotif('Grid cleared. Origin tile placed.'); });
 
 $('load-song-btn').addEventListener('click',()=>$('load-song-input').click());
 $('load-song-input').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; Editor.loadAudio(f); e.target.value=''; });
