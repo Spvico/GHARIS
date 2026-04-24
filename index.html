@@ -128,6 +128,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .auto-switch-btn{width:100%;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:var(--font-head);font-size:9px;letter-spacing:0.25em;text-transform:uppercase;padding:6px 8px;cursor:pointer;transition:var(--tr);text-align:center;}
 .auto-switch-btn:hover{border-color:var(--white);color:var(--white);}
 .auto-switch-btn.on{background:var(--white);color:var(--bg);border-color:var(--white);}
+.multi-info-row{display:flex;align-items:center;gap:8px;margin-top:5px;padding:7px 9px;background:var(--faint);border:1px solid var(--border);}
+.multi-info-badge{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--white);letter-spacing:0.1em;flex-shrink:0;}
+.multi-info-hint{font-size:8px;letter-spacing:0.08em;color:var(--dim);line-height:1.4;}
 
 /* Autosave badge */
 .autosave-badge{font-size:8px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-top:6px;}
@@ -171,7 +174,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .mark-btn:active{transform:scale(0.95);}
 
 /* Timeline */
-.timeline-wrap{flex:1;position:relative;overflow:hidden;cursor:pointer;}
+.timeline-wrap{flex:1;position:relative;overflow:hidden;cursor:pointer;user-select:none;}
 .timeline-canvas{position:absolute;inset:0;width:100%;height:100%;}
 .timeline-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--white);pointer-events:none;z-index:5;transform:translateX(0);}
 .timeline-playhead{position:absolute;top:0;width:1px;background:#444;pointer-events:none;z-index:4;}
@@ -366,6 +369,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
               <div style="flex:1"><input class="editor-input" id="ed-dur-sec" type="number" min="0" max="59" value="30"><div class="editor-input-tiny-label">SEC</div></div>
               <div style="flex:1"><input class="editor-input" id="ed-dur-ms" type="number" min="0" max="999" value="0"><div class="editor-input-tiny-label">MS</div></div>
             </div>
+            <button class="editor-btn" id="auto-dur-btn" style="margin-top:5px;">⊙ Auto-Set from Audio</button>
           </div>
 
           <div class="sidebar-section">
@@ -387,10 +391,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
               </div>
             </div>
             <div style="margin-top:9px;">
-              <div class="sidebar-label">Multi-Click</div>
-              <div style="display:flex;gap:5px;margin-top:3px;">
-                <button class="editor-btn" id="multi-1" style="flex:1;margin-top:0">× 1</button>
-                <button class="editor-btn" id="multi-2" style="flex:1;margin-top:0">× 2</button>
+              <div class="sidebar-label">Multi-Click <span style="color:#555;font-size:8px;letter-spacing:0.1em;">(auto-assigned)</span></div>
+              <div class="multi-info-row" id="multi-info-row">
+                <div class="multi-info-badge" id="multi-info-badge">× 1</div>
+                <div class="multi-info-hint" id="multi-info-hint">Single tap required</div>
               </div>
             </div>
             <div style="margin-top:9px;">
@@ -413,7 +417,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
               <b style="color:#aaa">M</b> Mark timestamp on selected tile<br>
               <b style="color:#aaa">Del</b> Delete selected tile<br>
               <b style="color:#aaa">↑↓←→</b> Change direction<br>
-              <b style="color:#aaa">1 / 2</b> Set multi-click<br>
               <b style="color:#aaa">P</b> Toggle preview
             </div>
           </div>
@@ -870,12 +873,39 @@ const Editor = {
     const canvas=$('timeline-canvas'), wrap=$('timeline-wrap');
     if(!canvas||!wrap) return;
     canvas.width=wrap.clientWidth||800; canvas.height=wrap.clientHeight||56;
-    wrap.onclick=(e)=>{
+
+    // Remove old listeners by flag — only attach once
+    if(this._timelineListened) { this._drawTimeline(); return; }
+    this._timelineListened=true;
+
+    const seekTo=(clientX)=>{
       if(!this.audioEl||!this.audioEl.duration) return;
       const rect=wrap.getBoundingClientRect();
-      this.audioEl.currentTime=(e.clientX-rect.left)/rect.width*this.audioEl.duration;
+      const pct=clamp((clientX-rect.left)/rect.width,0,1);
+      this.audioEl.currentTime=pct*this.audioEl.duration;
       this._tickAudioUI();
+      this._drawTimeline();
     };
+
+    // ── Mouse ──
+    let mouseDown=false;
+    wrap.addEventListener('mousedown',e=>{
+      mouseDown=true; seekTo(e.clientX);
+      // Change cursor while scrubbing
+      wrap.style.cursor='grabbing';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove',e=>{ if(mouseDown) seekTo(e.clientX); });
+    window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; wrap.style.cursor='pointer'; } });
+
+    // ── Touch ──
+    wrap.addEventListener('touchstart',e=>{
+      seekTo(e.touches[0].clientX); e.preventDefault();
+    },{passive:false});
+    wrap.addEventListener('touchmove',e=>{
+      seekTo(e.touches[0].clientX); e.preventDefault();
+    },{passive:false});
+
     this._drawTimeline();
   },
 
@@ -1092,8 +1122,6 @@ const Editor = {
         case 'ArrowDown':  e.preventDefault(); applyDir('down');  break;
         case 'ArrowLeft':  e.preventDefault(); applyDir('left');  break;
         case 'ArrowRight': e.preventDefault(); applyDir('right'); break;
-        case '1': if(this.selectedKey&&this.tiles[this.selectedKey]){this.tiles[this.selectedKey].multiClick=1;this.render();this._scheduleAutosave();} break;
-        case '2': if(this.selectedKey&&this.tiles[this.selectedKey]){this.tiles[this.selectedKey].multiClick=2;this.render();this._scheduleAutosave();} break;
         case 'p': case 'P': e.preventDefault(); this._previewRunning?this.stopPreview():this.startPreview(); break;
       }
     });
@@ -1116,10 +1144,21 @@ const Editor = {
 
   updatePanel(){
     const tile=this.selectedKey?this.tiles[this.selectedKey]:null;
-    if(!tile){ $('tile-info').innerHTML='No tile selected.<br>Click a tile on the grid.'; ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.remove('active')); $('ed-tile-ts').value=''; return; }
-    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>×:</strong> ${tile.multiClick}<br><strong>Time:</strong> ${this._fmt(tile.timestamp)}`;
+    if(!tile){
+      $('tile-info').innerHTML='No tile selected.<br>Click a tile on the grid.';
+      ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.remove('active'));
+      $('ed-tile-ts').value='';
+      $('multi-info-badge').textContent='—';
+      $('multi-info-hint').textContent='Select a tile to see';
+      return;
+    }
+    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>Time:</strong> ${this._fmt(tile.timestamp)}`;
     ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.toggle('active',tile.direction===d));
     $('ed-tile-ts').value=tile.timestamp;
+    // Multi-click info
+    const mc=tile.multiClick||1;
+    $('multi-info-badge').textContent='× '+mc;
+    $('multi-info-hint').textContent=mc>1?'Double tap — placed from a mid-path tile':'Single tap — placed from an end tile';
   },
 
   render(){
@@ -1150,6 +1189,17 @@ const Editor = {
           blk.appendChild(tsLbl);
           if(tile.multiClick>1){const b=document.createElement('div');b.className='multi-badge';b.textContent=tile.multiClick;blk.appendChild(b);}
           blk.addEventListener('click',e=>{e.stopPropagation();this.selectTile(key);this.render();});
+          // Double-click visual: two small squares in top-right corner
+          if(tile.multiClick>1){
+            const b=document.createElement('div');
+            b.style.cssText='position:absolute;top:3px;right:3px;display:flex;gap:2px;pointer-events:none;';
+            for(let d=0;d<2;d++){
+              const dot=document.createElement('div');
+              dot.style.cssText=`width:5px;height:5px;background:${key===this.lastKey?'var(--bg)':'var(--white)'};`;
+              b.appendChild(dot);
+            }
+            blk.appendChild(b);
+          }
           cell.appendChild(blk);
           ['up','down','left','right'].forEach(dir=>{
             const nk=this.nKey(col,row,dir);
@@ -1159,7 +1209,13 @@ const Editor = {
                 e.stopPropagation();
                 const[nx,ny]=nk.split(',').map(Number);
                 const autoTs=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:Math.round((tile.timestamp+0.8)*100)/100;
-                this.placeTile(nx,ny,dir,1,autoTs);
+                // A tile is "non-end" if it has ANY existing neighbour in any direction
+                // (meaning it sits in the middle of a path). Adding from it = double-click tile.
+                const neighbourCount=['up','down','left','right'].filter(d=>{
+                  const nk2=this.nKey(col,row,d); return !!this.tiles[nk2];
+                }).length;
+                const isNonEnd=neighbourCount>=1; // already connected to at least one tile
+                this.placeTile(nx,ny,dir,isNonEnd?2:1,autoTs);
                 this.selectTile(this.tileKey(nx,ny)); this.render();
               }); cell.appendChild(ab);
             }
@@ -1195,8 +1251,7 @@ $('dir-left').addEventListener('click', ()=>applyDir('left'));
 $('dir-right').addEventListener('click',()=>applyDir('right'));
 function applyDir(dir){ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].direction=dir; Editor.render(); Editor._scheduleAutosave(); }
 
-$('multi-1').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=1; Editor.render(); Editor._scheduleAutosave(); });
-$('multi-2').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=2; Editor.render(); Editor._scheduleAutosave(); });
+// multi-click is now auto-assigned based on tile position in path
 
 $('ed-tile-ts').addEventListener('change',()=>{
   if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return;
@@ -1225,6 +1280,28 @@ $('audio-play-btn').addEventListener('click',()=>Editor.togglePlay());
 $('audio-stop-btn').addEventListener('click',()=>Editor.stopAudio());
 $('audio-preview-vol').addEventListener('input',e=>{ if(Editor.audioEl) Editor.audioEl.volume=e.target.value/100; });
 
+$('auto-dur-btn').addEventListener('click',()=>{
+  let totalSecs=0;
+  if(Editor.audioEl&&Editor.audioEl.duration){
+    // Use audio duration
+    totalSecs=Editor.audioEl.duration;
+  } else {
+    // Fall back: last tile timestamp + 2s buffer
+    const times=Object.values(Editor.tiles).map(t=>t.timestamp);
+    if(!times.length){ showNotif('No audio or tiles to derive duration from.'); return; }
+    totalSecs=Math.max(...times)+2;
+  }
+  const mins=Math.floor(totalSecs/60);
+  const secs=Math.floor(totalSecs%60);
+  const ms=Math.round((totalSecs%1)*1000);
+  $('ed-dur-min').value=mins;
+  $('ed-dur-sec').value=secs;
+  $('ed-dur-ms').value=ms;
+  Editor._scheduleAutosave();
+  const src=Editor.audioEl&&Editor.audioEl.duration?'audio file':'last tile';
+  showNotif(`Duration set to ${mins}:${String(secs).padStart(2,'0')}.${String(ms).padStart(3,'0')} (from ${src})`,2500);
+});
+
 window.addEventListener('resize',()=>{ if(currentScreen==='editor') Editor._initTimeline(); });
 
 $('preview-toggle-btn').addEventListener('click',()=>{ Editor._previewRunning?Editor.stopPreview():Editor.startPreview(); });
@@ -1250,10 +1327,15 @@ const Game={
   canvas:null,ctx:null,
   TILE:64,APPEAR:1.5,
   PW:0.08,EW:0.18,LW:0.18,MW:0.35,
+  // Camera — world-space offset (tiles are drawn at screenCenter + tile.pos*G + camOffset)
+  camX:0, camY:0,       // current smoothed camera world offset
+  camTX:0, camTY:0,     // target camera world offset
+  CAM_SPEED:4.5,        // exponential lerp speed (higher = snappier)
 
   init(lv){
     this.level=lv;this.score=0;this.combo=0;this.lives=3;
     this.running=false;this.paused=false;this.elapsed=0;this.nextTileIdx=0;this.activeTiles=[];
+    this.camX=0;this.camY=0;this.camTX=0;this.camTY=0;
     this.tiles=(lv.tiles||[]).map(t=>({...t})).sort((a,b)=>a.timestamp-b.timestamp);
     this.tileStates=this.tiles.map(t=>({tile:t,clicksLeft:t.multiClick||1,status:'pending'}));
     const d=lv.duration||{}; this.totalDuration=(d.minutes||0)*60+(d.seconds||0)+(d.milliseconds||0)/1000||60;
@@ -1276,7 +1358,7 @@ const Game={
   resize(){this.canvas.width=window.innerWidth;this.canvas.height=window.innerHeight;},
 
   start(){
-    this.running=true;this.startTime=performance.now();
+    this.running=true;this.startTime=performance.now();this._lastFrame=performance.now();
     if(this.audio)this.audio.play().catch(()=>{});
     this.loop();
   },
@@ -1284,7 +1366,12 @@ const Game={
   loop(){
     if(!this.running)return;
     if(this.paused){this.animId=requestAnimationFrame(()=>this.loop());return;}
-    this.elapsed=(performance.now()-this.startTime)/1000;
+
+    const now=performance.now();
+    const dt=now-(this._lastFrame||now);
+    this._lastFrame=now;
+    this.elapsed=(now-this.startTime)/1000;
+
     // Spawn
     while(this.nextTileIdx<this.tiles.length){
       const st=this.tileStates[this.nextTileIdx];
@@ -1295,15 +1382,70 @@ const Game={
     this.activeTiles=this.activeTiles.filter(st=>st.status==='active');
     // Win check
     if(this.tileStates.every(st=>st.status!=='pending'&&st.status!=='active')&&this.elapsed>(this.tiles.length?this.tiles[this.tiles.length-1].timestamp+1:2)){this.win();return;}
+
     $('progress-fill').style.width=clamp(this.elapsed/this.totalDuration*100,0,100)+'%';
+
+    // ── CAMERA TARGET ──
+    // Focus on the weighted center of all currently active tiles,
+    // blended with the next upcoming tile so the camera leads ahead
+    // smoothly rather than snapping only when tiles appear.
+    this._updateCameraTarget();
+
+    // Exponential lerp toward target (frame-rate independent)
+    const alpha=1-Math.exp(-this.CAM_SPEED*(dt/1000));
+    this.camX+=(this.camTX-this.camX)*alpha;
+    this.camY+=(this.camTY-this.camY)*alpha;
+
     this.draw();
     this.animId=requestAnimationFrame(()=>this.loop());
   },
 
-  _drawArrow(ctx, dir, size, color){
-    const h=size*0.38, d=size*0.22;
-    ctx.strokeStyle=color; ctx.lineWidth=size*0.10;
-    ctx.lineCap='square'; ctx.lineJoin='miter';
+  _updateCameraTarget(){
+    const G=80;
+
+    // Collect weighted positions:
+    // Active tiles (weight 1.0 each) + next upcoming tile (weight 0.6, lookahead)
+    let wx=0,wy=0,w=0;
+
+    // Active tiles — full weight, but weight more toward the tile that's about to hit
+    this.activeTiles.forEach(st=>{
+      // Tiles closer to their perfect moment get higher weight so cam leans toward them
+      const dt=Math.abs(this.elapsed-st.tile.timestamp);
+      const tileW=clamp(1.5-dt*2,0.2,1.5);
+      wx+=st.tile.position.x*G*tileW;
+      wy+=st.tile.position.y*G*tileW;
+      w+=tileW;
+    });
+
+    // Lookahead: the next tile(s) that haven't appeared yet — partial weight
+    // gives the camera a head start before they pop in
+    let lookahead=0;
+    for(let i=this.nextTileIdx; i<this.tiles.length&&lookahead<2; i++){
+      const t=this.tiles[i];
+      const timeUntil=t.timestamp-this.elapsed;
+      // Start pulling toward it up to (APPEAR + 0.8)s before it appears
+      const pullWindow=this.APPEAR+0.8;
+      if(timeUntil>pullWindow) break;
+      const lw=clamp((pullWindow-timeUntil)/pullWindow,0,1)*0.5;
+      wx+=t.position.x*G*lw;
+      wy+=t.position.y*G*lw;
+      w+=lw;
+      lookahead++;
+    }
+
+    if(w>0){
+      // Target is the weighted centroid, negated (camera moves opposite to world)
+      this.camTX=-(wx/w);
+      this.camTY=-(wy/w);
+    } else {
+      // No active or upcoming tiles — drift back to origin slowly
+      this.camTX=0; this.camTY=0;
+    }
+  },
+
+  _drawArrow(ctx,dir,size,color){
+    const h=size*0.38,d=size*0.22;
+    ctx.strokeStyle=color;ctx.lineWidth=size*0.10;ctx.lineCap='square';ctx.lineJoin='miter';
     ctx.beginPath();
     if(dir==='right'){ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);}
     if(dir==='left') {ctx.moveTo(d,-h);ctx.lineTo(-d,0);ctx.lineTo(d,h);}
@@ -1315,10 +1457,18 @@ const Game={
   draw(){
     const W=this.canvas.width,H=this.canvas.height,ctx=this.ctx;
     ctx.clearRect(0,0,W,H);
+
+    // Background grid — offset with camera so it scrolls with the world
+    const G=80;
+    const offX=((this.camX%G)+G)%G;
+    const offY=((this.camY%G)+G)%G;
     ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
-    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-    const cx=W/2,cy=H/2,T=this.TILE,G=80,appear=-this.APPEAR;
+    for(let x=offX-G;x<W+G;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=offY-G;y<H+G;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // Screen center + camera offset = world origin on screen
+    const cx=W/2+this.camX, cy=H/2+this.camY;
+    const T=this.TILE,appear=-this.APPEAR;
 
     // Update in-game % HUD
     const totalT=this.tileStates.length;
@@ -1326,12 +1476,12 @@ const Game={
     $('hud-pct').textContent=totalT>0?Math.round(doneT/totalT*100)+'%':'0%';
 
     this.activeTiles.forEach(st=>{
-      const tile=st.tile,dt=this.elapsed-tile.timestamp;
-      const tx=cx+tile.position.x*G,ty=cy+tile.position.y*G;
+      const tile=st.tile,dtime=this.elapsed-tile.timestamp;
+      const tx=cx+tile.position.x*G, ty=cy+tile.position.y*G;
 
       // Tile square + arrow
       ctx.save();ctx.translate(tx,ty);
-      ctx.globalAlpha=clamp((dt-appear)/0.3,0,1);
+      ctx.globalAlpha=clamp((dtime-appear)/0.3,0,1);
       ctx.strokeStyle='#ffffff';ctx.lineWidth=2;
       ctx.strokeRect(-T/2,-T/2,T,T);
       this._drawArrow(ctx,tile.direction,T,'#ffffff');
@@ -1341,14 +1491,12 @@ const Game={
       }
       ctx.restore();
 
-      // Shrinking ring — starts large, lands EXACTLY on tile border at timestamp (dt=0)
-      if(dt>=appear&&dt<=this.MW+0.1){
-        const RING_START=T*2.6;
-        const RING_END=T; // at dt=0, ring == tile size exactly
-        const prog=clamp((dt-appear)/(-appear),0,1); // 0 at appear, 1 at timestamp
+      // Shrinking ring
+      if(dtime>=appear&&dtime<=this.MW+0.1){
+        const RING_START=T*2.6, RING_END=T;
+        const prog=clamp((dtime-appear)/(-appear),0,1);
         const rSize=RING_START-(RING_START-RING_END)*prog;
-        let rA=1;
-        if(dt>0) rA=clamp(1-(dt/this.MW)*1.3,0,1);
+        let rA=1; if(dtime>0) rA=clamp(1-(dtime/this.MW)*1.3,0,1);
         ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=rA;
         ctx.strokeStyle='#ffffff';
         ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);
