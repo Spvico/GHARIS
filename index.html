@@ -90,22 +90,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 
 /* ══ EDITOR ══ */
 #editor{flex-direction:column;background:var(--bg);align-items:stretch;}
-.editor-layout{display:flex;position:absolute;top:65px;bottom:0;left:0;right:0;overflow:hidden;}
+.editor-layout{display:flex;position:absolute;top:65px;bottom:0;left:0;right:0;overflow:hidden;flex-direction:column;}
+.editor-top{display:flex;flex:1;overflow:hidden;min-height:0;}
 
-/* Sidebar — fixed width, scrollable content */
-.editor-sidebar{
-  width:255px;flex-shrink:0;
-  border-right:1px solid var(--border);
-  background:var(--bg);
-  position:relative;z-index:20;
-  overflow-y:auto;overflow-x:hidden;
-}
+/* Sidebar */
+.editor-sidebar{width:260px;flex-shrink:0;border-right:1px solid var(--border);background:var(--bg);position:relative;z-index:20;overflow-y:auto;overflow-x:hidden;}
 .editor-sidebar::-webkit-scrollbar{width:3px;}
 .editor-sidebar::-webkit-scrollbar-thumb{background:var(--border);}
-.sidebar-inner{padding:16px;display:flex;flex-direction:column;}
-.sidebar-section{padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--faint);}
+.sidebar-inner{padding:14px;display:flex;flex-direction:column;}
+.sidebar-section{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--faint);}
 .sidebar-section:last-child{border-bottom:none;margin-bottom:0;}
-.sidebar-label{font-family:var(--font-head);font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;}
+.sidebar-label{font-family:var(--font-head);font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:var(--dim);margin-bottom:7px;}
 .editor-input{width:100%;background:var(--faint);border:1px solid var(--border);color:var(--white);font-family:var(--font-mono);font-size:10px;padding:7px 9px;outline:none;transition:border-color var(--tr);}
 .editor-input:focus{border-color:var(--white);}
 .editor-input-row{display:flex;gap:5px;margin-top:5px;}
@@ -114,6 +109,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .editor-btn{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:var(--font-head);font-size:10px;letter-spacing:0.25em;text-transform:uppercase;padding:8px;cursor:pointer;transition:var(--tr);margin-top:5px;}
 .editor-btn:hover,.editor-btn:active{background:var(--white);color:var(--bg);border-color:var(--white);}
 .editor-btn.danger:hover,.editor-btn.danger:active{background:#c00;border-color:#c00;color:#fff;}
+.editor-btn.accent{border-color:var(--white);color:var(--white);}
+.editor-btn.accent:hover,.editor-btn.accent:active{background:var(--white);color:var(--bg);}
 .tile-info{background:var(--faint);border:1px solid var(--border);padding:9px;font-size:9px;line-height:1.9;letter-spacing:0.03em;color:var(--dim);}
 .tile-info strong{color:var(--white);}
 .editor-notice{background:var(--faint);border-left:2px solid var(--white);padding:8px 11px;font-size:9px;line-height:1.7;color:var(--dim);margin-bottom:4px;}
@@ -122,23 +119,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .dir-btn:hover,.dir-btn:active,.dir-btn.active{background:var(--white);color:var(--bg);border-color:var(--white);}
 .dir-btn.empty{pointer-events:none;background:transparent;border:none;}
 
+/* Tile info quick-edit row */
+.quick-ts-row{display:flex;align-items:center;gap:6px;margin-top:8px;}
+.quick-ts-row .editor-input{flex:1;}
+.ts-stamp-btn{flex-shrink:0;background:var(--white);border:none;color:var(--bg);font-family:var(--font-head);font-size:9px;letter-spacing:0.2em;padding:7px 9px;cursor:pointer;text-transform:uppercase;transition:var(--tr);white-space:nowrap;}
+.ts-stamp-btn:hover{background:#ccc;}
+
+/* Autosave badge */
+.autosave-badge{font-size:8px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-top:6px;}
+.autosave-dot{width:5px;height:5px;border-radius:50%;background:#555;transition:background 0.3s;}
+.autosave-dot.saved{background:#6f6;}
+
 /* Editor workspace — pannable/zoomable */
-.editor-main{
-  flex:1;
-  overflow:hidden;
-  position:relative;
-  background:var(--bg);
-  cursor:grab;
-  /* block browser default touch behaviors inside workspace */
-  touch-action:none;
-}
+.editor-main{flex:1;overflow:hidden;position:relative;background:var(--bg);cursor:grab;touch-action:none;}
 .editor-main.grabbing{cursor:grabbing;}
-.editor-viewport{
-  position:absolute;
-  top:0;left:0;
-  transform-origin:0 0;
-  will-change:transform;
-}
+.editor-viewport{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
 .grid-canvas{display:grid;position:relative;}
 .grid-cell{width:64px;height:64px;position:relative;display:flex;align-items:center;justify-content:center;}
 .tile-block{width:50px;height:50px;border:2px solid var(--white);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;font-family:var(--font-head);cursor:pointer;position:relative;transition:background var(--tr),color var(--tr);background:transparent;color:var(--white);}
@@ -154,7 +149,36 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .add-btn.down {bottom:-9px;left:50%;transform:translateX(-50%);}
 .add-btn.left {left:-9px;top:50%;transform:translateY(-50%);}
 .add-btn.right{right:-9px;top:50%;transform:translateY(-50%);}
-.editor-zoom-hint{position:absolute;bottom:10px;right:12px;font-size:8px;letter-spacing:0.2em;color:#363636;pointer-events:none;text-transform:uppercase;}
+.editor-hint{position:absolute;bottom:10px;right:12px;font-size:8px;letter-spacing:0.2em;color:#363636;pointer-events:none;text-transform:uppercase;line-height:1.8;text-align:right;}
+
+/* ── AUDIO / TIMELINE PANEL ── */
+.editor-bottom{height:130px;flex-shrink:0;border-top:1px solid var(--border);background:#0d0d0d;display:flex;flex-direction:column;position:relative;}
+.audio-toolbar{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.audio-time{font-family:var(--font-mono);font-size:11px;color:var(--white);letter-spacing:0.05em;min-width:90px;}
+.audio-btn{background:transparent;border:1px solid var(--border);color:var(--white);font-family:var(--font-head);font-size:10px;letter-spacing:0.2em;padding:5px 11px;cursor:pointer;transition:var(--tr);text-transform:uppercase;flex-shrink:0;}
+.audio-btn:hover,.audio-btn:active{background:var(--white);color:var(--bg);}
+.audio-btn.active-btn{background:var(--white);color:var(--bg);}
+.audio-song-name{font-size:9px;letter-spacing:0.2em;color:var(--dim);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;}
+.audio-vol-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.audio-vol-label{font-size:8px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;}
+.audio-vol-wrap input[type=range]{width:70px;}
+.mark-btn{background:var(--white);border:none;color:var(--bg);font-family:var(--font-head);font-size:10px;letter-spacing:0.2em;padding:6px 13px;cursor:pointer;transition:var(--tr);text-transform:uppercase;flex-shrink:0;}
+.mark-btn:hover{background:#ccc;}
+.mark-btn:active{transform:scale(0.95);}
+
+/* Timeline */
+.timeline-wrap{flex:1;position:relative;overflow:hidden;cursor:pointer;}
+.timeline-canvas{position:absolute;inset:0;width:100%;height:100%;}
+.timeline-cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--white);pointer-events:none;z-index:5;transform:translateX(0);}
+.timeline-playhead{position:absolute;top:0;width:1px;background:#444;pointer-events:none;z-index:4;}
+
+/* Preview panel */
+.preview-panel{position:absolute;top:65px;left:260px;right:0;bottom:130px;background:rgba(10,10,10,0.97);z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;}
+.preview-panel.show{display:flex;}
+.preview-canvas{border:1px solid var(--border);}
+.preview-close-btn{position:absolute;top:12px;right:14px;background:transparent;border:1px solid var(--border);color:var(--white);font-family:var(--font-head);font-size:10px;letter-spacing:0.25em;padding:7px 14px;cursor:pointer;text-transform:uppercase;transition:var(--tr);}
+.preview-close-btn:hover{background:var(--white);color:var(--bg);}
+.preview-hint{font-size:9px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;margin-top:10px;}
 
 /* ══ GAME ══ */
 #game{background:var(--bg);}
@@ -306,70 +330,125 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 <div class="screen" id="editor">
   <div class="screen-header">
     <div class="screen-title">Level Editor</div>
-    <button class="back-btn" id="editor-back">← Back</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="autosave-badge"><div class="autosave-dot" id="autosave-dot"></div><span id="autosave-label">Autosaved</span></div>
+      <button class="back-btn" id="editor-back">← Back</button>
+    </div>
   </div>
   <div class="editor-layout">
 
-    <div class="editor-sidebar">
-      <div class="sidebar-inner">
+    <div class="editor-top">
+      <div class="editor-sidebar">
+        <div class="sidebar-inner">
 
-        <div class="sidebar-section">
-          <div class="editor-notice">Custom levels generate JSON code to share with the owner to potentially become an official level.</div>
-        </div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-label">Level Info</div>
-          <input class="editor-input" id="ed-level-name" placeholder="Level Name" value="My Level">
-          <div style="margin-top:5px;"><input class="editor-input" id="ed-song-name" placeholder="song.mp3" value=""></div>
-          <div class="sidebar-label" style="margin-top:11px;">Duration</div>
-          <div class="editor-input-row">
-            <div style="flex:1"><input class="editor-input" id="ed-dur-min" type="number" min="0" value="2"><div class="editor-input-tiny-label">MIN</div></div>
-            <div style="flex:1"><input class="editor-input" id="ed-dur-sec" type="number" min="0" max="59" value="30"><div class="editor-input-tiny-label">SEC</div></div>
-            <div style="flex:1"><input class="editor-input" id="ed-dur-ms" type="number" min="0" max="999" value="0"><div class="editor-input-tiny-label">MS</div></div>
+          <div class="sidebar-section">
+            <div class="editor-notice">Custom levels generate JSON code to share with the owner to potentially become an official level.</div>
           </div>
-        </div>
 
-        <div class="sidebar-section">
-          <div class="sidebar-label">Selected Tile</div>
-          <div class="tile-info" id="tile-info">No tile selected.<br>Click a tile on the grid.</div>
-          <div style="margin-top:9px;">
-            <div class="sidebar-label">Direction</div>
-            <div class="dir-picker">
-              <div class="dir-btn empty"></div><div class="dir-btn" id="dir-up">∧</div><div class="dir-btn empty"></div>
-              <div class="dir-btn" id="dir-left">‹</div><div class="dir-btn empty"></div><div class="dir-btn" id="dir-right">›</div>
-              <div class="dir-btn empty"></div><div class="dir-btn" id="dir-down">∨</div><div class="dir-btn empty"></div>
+          <div class="sidebar-section">
+            <div class="sidebar-label">Level Info</div>
+            <input class="editor-input" id="ed-level-name" placeholder="Level Name" value="My Level">
+            <div style="margin-top:5px;"><input class="editor-input" id="ed-song-name" placeholder="song.mp3 (for export)" value=""></div>
+            <div style="margin-top:5px;"><input class="editor-input" id="ed-description" placeholder="Description (optional)" value=""></div>
+            <div class="sidebar-label" style="margin-top:11px;">Duration</div>
+            <div class="editor-input-row">
+              <div style="flex:1"><input class="editor-input" id="ed-dur-min" type="number" min="0" value="2"><div class="editor-input-tiny-label">MIN</div></div>
+              <div style="flex:1"><input class="editor-input" id="ed-dur-sec" type="number" min="0" max="59" value="30"><div class="editor-input-tiny-label">SEC</div></div>
+              <div style="flex:1"><input class="editor-input" id="ed-dur-ms" type="number" min="0" max="999" value="0"><div class="editor-input-tiny-label">MS</div></div>
             </div>
           </div>
-          <div style="margin-top:9px;">
-            <div class="sidebar-label">Multi-Click</div>
-            <div style="display:flex;gap:5px;margin-top:3px;">
-              <button class="editor-btn" id="multi-1" style="flex:1;margin-top:0">× 1</button>
-              <button class="editor-btn" id="multi-2" style="flex:1;margin-top:0">× 2</button>
+
+          <div class="sidebar-section">
+            <div class="sidebar-label">Song Preview</div>
+            <button class="editor-btn accent" id="load-song-btn">Load Audio File</button>
+            <input type="file" class="hidden-input" id="load-song-input" accept="audio/*">
+            <div style="margin-top:5px;font-size:9px;letter-spacing:0.1em;color:var(--dim);" id="song-preview-name">No file loaded · local preview only</div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-label">Selected Tile</div>
+            <div class="tile-info" id="tile-info">No tile selected.<br>Click a tile on the grid.</div>
+            <div style="margin-top:9px;">
+              <div class="sidebar-label">Direction</div>
+              <div class="dir-picker">
+                <div class="dir-btn empty"></div><div class="dir-btn" id="dir-up">∧</div><div class="dir-btn empty"></div>
+                <div class="dir-btn" id="dir-left">‹</div><div class="dir-btn empty"></div><div class="dir-btn" id="dir-right">›</div>
+                <div class="dir-btn empty"></div><div class="dir-btn" id="dir-down">∨</div><div class="dir-btn empty"></div>
+              </div>
+            </div>
+            <div style="margin-top:9px;">
+              <div class="sidebar-label">Multi-Click</div>
+              <div style="display:flex;gap:5px;margin-top:3px;">
+                <button class="editor-btn" id="multi-1" style="flex:1;margin-top:0">× 1</button>
+                <button class="editor-btn" id="multi-2" style="flex:1;margin-top:0">× 2</button>
+              </div>
+            </div>
+            <div style="margin-top:9px;">
+              <div class="sidebar-label">Timestamp — <span style="color:var(--white)" id="ts-hint">no song</span></div>
+              <div class="quick-ts-row">
+                <input class="editor-input" id="ed-tile-ts" type="number" step="0.01" placeholder="seconds" min="0">
+                <button class="ts-stamp-btn" id="stamp-ts-btn" title="Set to current song position">⊙ Stamp</button>
+              </div>
+            </div>
+            <button class="editor-btn danger" id="delete-tile-btn">Delete Tile</button>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-label">Hotkeys</div>
+            <div style="font-size:8px;color:var(--dim);line-height:2;letter-spacing:0.05em;">
+              <b style="color:#aaa">Space</b> Play/Pause song<br>
+              <b style="color:#aaa">M</b> Mark timestamp on selected tile<br>
+              <b style="color:#aaa">Del</b> Delete selected tile<br>
+              <b style="color:#aaa">↑↓←→</b> Change direction<br>
+              <b style="color:#aaa">1 / 2</b> Set multi-click<br>
+              <b style="color:#aaa">P</b> Toggle preview
             </div>
           </div>
-          <div style="margin-top:9px;">
-            <div class="sidebar-label">Timestamp (seconds)</div>
-            <input class="editor-input" id="ed-tile-ts" type="number" step="0.01" placeholder="e.g. 1.50" min="0">
+
+          <div class="sidebar-section">
+            <div class="sidebar-label">Actions</div>
+            <button class="editor-btn" id="preview-toggle-btn">Preview Level</button>
+            <button class="editor-btn" id="export-json-btn">Export JSON</button>
+            <button class="editor-btn" id="import-json-ed-btn">Import JSON</button>
+            <input type="file" class="hidden-input" id="import-json-ed-input" accept=".json">
+            <button class="editor-btn" id="clear-grid-btn" style="margin-top:9px;">Clear Grid</button>
           </div>
-          <button class="editor-btn danger" id="delete-tile-btn">Delete Tile</button>
-        </div>
 
-        <div class="sidebar-section">
-          <div class="sidebar-label">Actions</div>
-          <button class="editor-btn" id="export-json-btn">Export JSON</button>
-          <button class="editor-btn" id="import-json-ed-btn">Import JSON</button>
-          <input type="file" class="hidden-input" id="import-json-ed-input" accept=".json">
-          <button class="editor-btn" id="clear-grid-btn" style="margin-top:9px;">Clear Grid</button>
         </div>
+      </div>
 
+      <div class="editor-main" id="editor-main">
+        <div class="editor-viewport" id="editor-viewport">
+          <div class="grid-canvas" id="grid-canvas"></div>
+        </div>
+        <div class="editor-hint">Drag to pan · Scroll to zoom<br>Space = play/pause · M = stamp time</div>
       </div>
     </div>
 
-    <div class="editor-main" id="editor-main">
-      <div class="editor-viewport" id="editor-viewport">
-        <div class="grid-canvas" id="grid-canvas"></div>
+    <!-- Audio Timeline -->
+    <div class="editor-bottom" id="editor-bottom">
+      <div class="audio-toolbar">
+        <button class="audio-btn" id="audio-play-btn">▶ Play</button>
+        <button class="audio-btn" id="audio-stop-btn">■ Stop</button>
+        <div class="audio-time" id="audio-time-display">0:00.000</div>
+        <button class="mark-btn" id="audio-mark-btn" title="Mark timestamp for selected tile (M)">⊙ Mark</button>
+        <div class="audio-song-name" id="audio-song-display">No audio loaded</div>
+        <div class="audio-vol-wrap">
+          <span class="audio-vol-label">Vol</span>
+          <input type="range" id="audio-preview-vol" min="0" max="100" value="70">
+        </div>
       </div>
-      <div class="editor-zoom-hint">Drag to pan · Scroll to zoom</div>
+      <div class="timeline-wrap" id="timeline-wrap">
+        <canvas class="timeline-canvas" id="timeline-canvas"></canvas>
+        <div class="timeline-cursor" id="timeline-cursor"></div>
+      </div>
+    </div>
+
+    <!-- Level Preview Overlay -->
+    <div class="preview-panel" id="preview-panel">
+      <button class="preview-close-btn" id="preview-close-btn">✕ Close</button>
+      <canvas class="preview-canvas" id="preview-canvas" width="640" height="360"></canvas>
+      <div class="preview-hint">Preview — press P or close to exit · song plays in sync</div>
     </div>
 
   </div>
@@ -628,137 +707,321 @@ function renderLevels(){
 }
 
 // ════════════════════════════════════
-//  EDITOR — free-pan workspace
+//  EDITOR
 // ════════════════════════════════════
 const Editor = {
   tiles:{}, lastKey:null, selectedKey:null,
-  panX:60, panY:60, zoom:1,
+  panX:80, panY:80, zoom:1,
   _dragging:false, _startX:0, _startY:0, _startPX:0, _startPY:0,
   _panListenersAttached:false,
+  // Audio
+  audioEl:null, audioURL:null, audioPlaying:false, _rafAudio:null,
+  // Preview
+  _previewRunning:false, _previewRaf:null,
+  // Autosave
+  _autoSaveTimer:null,
 
+  // ── INIT ──
   init(){
     this.tiles={}; this.lastKey=null; this.selectedKey=null;
     this.panX=80; this.panY=80; this.zoom=1;
-    this.placeTile(0,0,'right',1,0.5);
+    const saved=localStorage.getItem('gharis_editor_autosave');
+    if(saved){ try{ this._loadData(JSON.parse(saved)); }catch(e){ this.placeTile(0,0,'right',1,0); } }
+    else { this.placeTile(0,0,'right',1,0); }
     this.render();
     this._centerOnTiles();
-    if(!this._panListenersAttached){ this._attachPanListeners(); this._panListenersAttached=true; }
+    if(!this._panListenersAttached){ this._attachPanListeners(); this._attachKeyListeners(); this._panListenersAttached=true; }
     else this._applyTransform();
+    this._initTimeline();
+    this._markSaved();
   },
 
-  _applyTransform(){
-    $('editor-viewport').style.transform=`translate(${this.panX}px,${this.panY}px) scale(${this.zoom})`;
+  // ── AUTOSAVE ──
+  _scheduleAutosave(){
+    clearTimeout(this._autoSaveTimer);
+    $('autosave-dot').classList.remove('saved'); $('autosave-label').textContent='Saving...';
+    this._autoSaveTimer=setTimeout(()=>{
+      try{ localStorage.setItem('gharis_editor_autosave',JSON.stringify(this.toJSON())); this._markSaved(); }catch(e){}
+    },1200);
   },
+  _markSaved(){ $('autosave-dot').classList.add('saved'); $('autosave-label').textContent='Autosaved'; },
+
+  // ── AUDIO ──
+  loadAudio(file){
+    if(this.audioEl) this.audioEl.pause();
+    if(this.audioURL) URL.revokeObjectURL(this.audioURL);
+    this.audioURL=URL.createObjectURL(file);
+    this.audioEl=new Audio(this.audioURL);
+    this.audioEl.volume=($('audio-preview-vol').value||70)/100;
+    this.audioEl.addEventListener('ended',()=>{ this.audioPlaying=false; this._updatePlayBtn(); cancelAnimationFrame(this._rafAudio); });
+    $('audio-song-display').textContent=file.name;
+    $('song-preview-name').textContent=file.name+' · local preview only';
+    $('ts-hint').textContent='0:00.000';
+    this.audioPlaying=false; this._updatePlayBtn();
+    this._initTimeline(); this._drawTimeline();
+  },
+
+  togglePlay(){
+    if(!this.audioEl){ showNotif('Load an audio file first.'); return; }
+    if(this.audioPlaying){ this.audioEl.pause(); this.audioPlaying=false; }
+    else { this.audioEl.play().catch(()=>{}); this.audioPlaying=true; this._startAudioRAF(); }
+    this._updatePlayBtn();
+  },
+
+  stopAudio(){
+    if(!this.audioEl) return;
+    this.audioEl.pause(); this.audioEl.currentTime=0;
+    this.audioPlaying=false; this._updatePlayBtn();
+    $('audio-time-display').textContent='0:00.000'; $('ts-hint').textContent='0:00.000';
+    $('timeline-cursor').style.left='0px';
+    this._drawTimeline();
+  },
+
+  _updatePlayBtn(){
+    $('audio-play-btn').textContent=this.audioPlaying?'❙❙ Pause':'▶ Play';
+    $('audio-play-btn').classList.toggle('active-btn',this.audioPlaying);
+  },
+
+  _startAudioRAF(){
+    const tick=()=>{
+      if(!this.audioPlaying) return;
+      this._tickAudioUI();
+      this._rafAudio=requestAnimationFrame(tick);
+    };
+    this._rafAudio=requestAnimationFrame(tick);
+  },
+
+  _tickAudioUI(){
+    if(!this.audioEl) return;
+    const t=this.audioEl.currentTime;
+    const str=this._fmt(t);
+    $('audio-time-display').textContent=str; $('ts-hint').textContent=str;
+    const dur=this.audioEl.duration||0;
+    if(dur>0){ $('timeline-cursor').style.left=(t/dur*$('timeline-wrap').clientWidth)+'px'; }
+    this._drawTimeline();
+  },
+
+  _fmt(t){
+    const m=Math.floor(t/60),s=Math.floor(t%60),ms=Math.round((t%1)*1000);
+    return `${m}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+  },
+
+  stampTime(){
+    if(!this.selectedKey||!this.tiles[this.selectedKey]){ showNotif('Select a tile first.'); return; }
+    const t=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:0;
+    this.tiles[this.selectedKey].timestamp=t;
+    $('ed-tile-ts').value=t; this.updatePanel(); this.render(); this._scheduleAutosave();
+    showNotif('Stamped '+this._fmt(t)+' → tile',1500);
+  },
+
+  // ── TIMELINE ──
+  _initTimeline(){
+    const canvas=$('timeline-canvas'), wrap=$('timeline-wrap');
+    if(!canvas||!wrap) return;
+    canvas.width=wrap.clientWidth||800; canvas.height=wrap.clientHeight||56;
+    wrap.onclick=(e)=>{
+      if(!this.audioEl||!this.audioEl.duration) return;
+      const rect=wrap.getBoundingClientRect();
+      this.audioEl.currentTime=(e.clientX-rect.left)/rect.width*this.audioEl.duration;
+      this._tickAudioUI();
+    };
+    this._drawTimeline();
+  },
+
+  _drawTimeline(){
+    const canvas=$('timeline-canvas'); if(!canvas) return;
+    const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0d0d0d'; ctx.fillRect(0,0,W,H);
+    const dur=this.audioEl?(this.audioEl.duration||0):0;
+    // Decorative waveform bars (static, seed by position for consistency)
+    ctx.fillStyle='#1a1a1a';
+    for(let x=0;x<W;x+=3){
+      // Pseudo-random height based on x position
+      const seed=(Math.sin(x*0.3)*0.5+0.5);
+      const bh=seed*H*0.55+3;
+      ctx.fillRect(x,H/2-bh/2,2,bh);
+    }
+    // Time ticks
+    if(dur>0){
+      const step=dur>120?30:dur>60?10:dur>30?5:1;
+      ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1;
+      ctx.fillStyle='#3a3a3a'; ctx.font='7px "Space Mono",monospace';
+      for(let t=0;t<=dur;t+=step){
+        const x=t/dur*W;
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+        if(t>0) ctx.fillText(this._fmt(t).split('.')[0],x+2,8);
+      }
+    }
+    // Tile markers
+    Object.values(this.tiles).forEach(tile=>{
+      if(!dur||tile.timestamp<0) return;
+      const x=tile.timestamp/dur*W;
+      const isSel=this.tileKey(tile.position.x,tile.position.y)===this.selectedKey;
+      // Vertical line
+      ctx.strokeStyle=isSel?'#ffffff':'#555555'; ctx.lineWidth=isSel?2:1;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+      // Arrow label at top
+      const arrow={up:'∧',down:'∨',left:'‹',right:'›'}[tile.direction]||'?';
+      ctx.fillStyle=isSel?'#ffffff':'#666666';
+      ctx.font='bold 9px "Barlow Condensed",sans-serif';
+      ctx.fillText(arrow,x+2,H-3);
+    });
+    // Playhead
+    if(this.audioEl&&dur>0){
+      const px=this.audioEl.currentTime/dur*W;
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,H); ctx.stroke();
+    }
+  },
+
+  // ── PREVIEW ──
+  startPreview(){
+    if(this._previewRunning) return;
+    $('preview-panel').classList.add('show');
+    this._previewRunning=true;
+    const canvas=$('preview-canvas');
+    const panel=$('preview-panel');
+    const pw=panel.clientWidth-80, ph=panel.clientHeight-80;
+    const aspect=16/9; let cw=pw, ch=pw/aspect;
+    if(ch>ph){ch=ph; cw=ph*aspect;}
+    canvas.width=Math.max(320,Math.floor(cw)); canvas.height=Math.max(180,Math.floor(ch));
+    if(this.audioEl){ this.audioEl.currentTime=0; this.audioEl.play().catch(()=>{}); this.audioPlaying=true; this._updatePlayBtn(); this._startAudioRAF(); }
+    const startWall=performance.now();
+    const loop=()=>{
+      if(!this._previewRunning) return;
+      const elapsed=this.audioEl?this.audioEl.currentTime:(performance.now()-startWall)/1000;
+      this._drawPreview(canvas,elapsed);
+      this._previewRaf=requestAnimationFrame(loop);
+    };
+    loop();
+  },
+
+  stopPreview(){
+    this._previewRunning=false; cancelAnimationFrame(this._previewRaf);
+    $('preview-panel').classList.remove('show');
+    if(this.audioEl){ this.audioEl.pause(); this.audioEl.currentTime=0; this.audioPlaying=false; this._updatePlayBtn(); cancelAnimationFrame(this._rafAudio); }
+    $('audio-time-display').textContent='0:00.000'; $('ts-hint').textContent='0:00.000';
+    $('timeline-cursor').style.left='0px'; this._drawTimeline();
+  },
+
+  _drawPreview(canvas,elapsed){
+    const W=canvas.width,H=canvas.height,ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    const cx=W/2,cy=H/2,T=50,G=Math.min(W,H)/7,APPEAR=1.5,MW=0.35;
+    const appear=-APPEAR, RING_START=T*2.6;
+    Object.values(this.tiles).forEach(tile=>{
+      const dt=elapsed-tile.timestamp;
+      if(dt<appear||dt>MW+0.3) return;
+      const tx=cx+tile.position.x*G, ty=cy+tile.position.y*G;
+      const alpha=clamp((dt-appear)/0.3,0,1);
+      ctx.save(); ctx.translate(tx,ty); ctx.globalAlpha=alpha;
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(-T/2,-T/2,T,T);
+      const h=T*0.38,d=T*0.22;
+      ctx.lineWidth=T*0.10; ctx.lineCap='square'; ctx.lineJoin='miter'; ctx.beginPath();
+      if(tile.direction==='right'){ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);}
+      if(tile.direction==='left') {ctx.moveTo(d,-h);ctx.lineTo(-d,0);ctx.lineTo(d,h);}
+      if(tile.direction==='up')   {ctx.moveTo(-h,d);ctx.lineTo(0,-d);ctx.lineTo(h,d);}
+      if(tile.direction==='down') {ctx.moveTo(-h,-d);ctx.lineTo(0,d);ctx.lineTo(h,-d);}
+      ctx.stroke(); ctx.restore();
+      const prog=clamp((dt-appear)/(-appear),0,1);
+      const rSize=RING_START-(RING_START-T)*prog;
+      let rA=1; if(dt>0) rA=clamp(1-(dt/MW)*1.3,0,1);
+      ctx.save(); ctx.translate(tx,ty); ctx.globalAlpha=rA*alpha;
+      ctx.strokeStyle='#fff'; ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);
+      ctx.strokeRect(-rSize/2,-rSize/2,rSize,rSize); ctx.restore();
+    });
+    ctx.fillStyle='#444'; ctx.font='10px "Space Mono",monospace';
+    ctx.fillText(this._fmt(elapsed),8,16);
+  },
+
+  // ── PAN / ZOOM ──
+  _applyTransform(){ $('editor-viewport').style.transform=`translate(${this.panX}px,${this.panY}px) scale(${this.zoom})`; },
 
   _centerOnTiles(){
     const main=$('editor-main');
-    const W=main.clientWidth||600, H=main.clientHeight||500;
+    const W=main.clientWidth||600, H=main.clientHeight||400;
     const keys=Object.keys(this.tiles);
     if(!keys.length){ this.panX=W/2-32; this.panY=H/2-32; this._applyTransform(); return; }
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     keys.forEach(k=>{const t=this.tiles[k];minX=Math.min(minX,t.position.x);maxX=Math.max(maxX,t.position.x);minY=Math.min(minY,t.position.y);maxY=Math.max(maxY,t.position.y);});
-    // Bounding box center in grid pixels (we expand by 1 in render, so offset by 1 CELL=64px)
     const gcx=((minX+maxX)/2+1)*64, gcy=((minY+maxY)/2+1)*64;
-    this.panX=W/2-gcx*this.zoom; this.panY=H/2-gcy*this.zoom;
-    this._applyTransform();
+    this.panX=W/2-gcx*this.zoom; this.panY=H/2-gcy*this.zoom; this._applyTransform();
   },
 
   _attachPanListeners(){
     const el=$('editor-main');
-
-    // ── MOUSE ──
-    el.addEventListener('mousedown', e=>{
-      // Only start pan if NOT clicking on interactive elements
-      if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input')) return;
-      this._dragging=true;
-      this._startX=e.clientX; this._startY=e.clientY;
-      this._startPX=this.panX; this._startPY=this.panY;
-      el.classList.add('grabbing');
+    el.addEventListener('mousedown',e=>{
+      if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input,.ts-stamp-btn')) return;
+      this._dragging=true; this._startX=e.clientX; this._startY=e.clientY;
+      this._startPX=this.panX; this._startPY=this.panY; el.classList.add('grabbing');
     });
-    // Use window so drag continues even if mouse leaves the editor area
-    window.addEventListener('mousemove', e=>{
-      if(!this._dragging) return;
-      this.panX=this._startPX+(e.clientX-this._startX);
-      this.panY=this._startPY+(e.clientY-this._startY);
-      this._applyTransform();
-    });
-    window.addEventListener('mouseup', ()=>{
-      if(this._dragging){ this._dragging=false; $('editor-main').classList.remove('grabbing'); }
-    });
-
-    // ── TOUCH PAN ──
+    window.addEventListener('mousemove',e=>{ if(!this._dragging) return; this.panX=this._startPX+(e.clientX-this._startX); this.panY=this._startPY+(e.clientY-this._startY); this._applyTransform(); });
+    window.addEventListener('mouseup',()=>{ if(this._dragging){this._dragging=false; $('editor-main').classList.remove('grabbing');} });
     let t0=null;
-    el.addEventListener('touchstart', e=>{
-      if(e.touches.length!==1) return;
-      if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input')) return;
-      t0=e.touches[0];
-      this._startPX=this.panX; this._startPY=this.panY;
-      e.preventDefault();
-    },{passive:false});
-    el.addEventListener('touchmove', e=>{
-      if(!t0||e.touches.length!==1) return;
-      const t=e.touches[0];
-      this.panX=this._startPX+(t.clientX-t0.clientX);
-      this.panY=this._startPY+(t.clientY-t0.clientY);
-      this._applyTransform();
-      e.preventDefault();
-    },{passive:false});
-    el.addEventListener('touchend', ()=>{ t0=null; });
-
-    // ── WHEEL ZOOM ──
-    el.addEventListener('wheel', e=>{
-      e.preventDefault();
-      const rect=el.getBoundingClientRect();
-      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-      const factor=e.deltaY<0?1.1:0.91;
-      const nz=clamp(this.zoom*factor,0.25,3);
-      this.panX=mx-(mx-this.panX)*(nz/this.zoom);
-      this.panY=my-(my-this.panY)*(nz/this.zoom);
-      this.zoom=nz;
-      this._applyTransform();
-    },{passive:false});
+    el.addEventListener('touchstart',e=>{ if(e.touches.length!==1||e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input')) return; t0=e.touches[0]; this._startPX=this.panX; this._startPY=this.panY; e.preventDefault(); },{passive:false});
+    el.addEventListener('touchmove',e=>{ if(!t0||e.touches.length!==1) return; const t=e.touches[0]; this.panX=this._startPX+(t.clientX-t0.clientX); this.panY=this._startPY+(t.clientY-t0.clientY); this._applyTransform(); e.preventDefault(); },{passive:false});
+    el.addEventListener('touchend',()=>{t0=null;});
+    el.addEventListener('wheel',e=>{ e.preventDefault(); const rect=el.getBoundingClientRect(); const mx=e.clientX-rect.left,my=e.clientY-rect.top; const factor=e.deltaY<0?1.1:0.91; const nz=clamp(this.zoom*factor,0.25,3); this.panX=mx-(mx-this.panX)*(nz/this.zoom); this.panY=my-(my-this.panY)*(nz/this.zoom); this.zoom=nz; this._applyTransform(); },{passive:false});
   },
 
+  _attachKeyListeners(){
+    document.addEventListener('keydown',e=>{
+      if(currentScreen!=='editor') return;
+      if(e.target.tagName==='INPUT') return;
+      switch(e.key){
+        case ' ': e.preventDefault(); this.togglePlay(); break;
+        case 'm': case 'M': e.preventDefault(); this.stampTime(); break;
+        case 'Delete': case 'Backspace': if(this.selectedKey){this.deleteTile(this.selectedKey);this.render();}  break;
+        case 'ArrowUp':    e.preventDefault(); applyDir('up');    break;
+        case 'ArrowDown':  e.preventDefault(); applyDir('down');  break;
+        case 'ArrowLeft':  e.preventDefault(); applyDir('left');  break;
+        case 'ArrowRight': e.preventDefault(); applyDir('right'); break;
+        case '1': if(this.selectedKey&&this.tiles[this.selectedKey]){this.tiles[this.selectedKey].multiClick=1;this.render();this._scheduleAutosave();} break;
+        case '2': if(this.selectedKey&&this.tiles[this.selectedKey]){this.tiles[this.selectedKey].multiClick=2;this.render();this._scheduleAutosave();} break;
+        case 'p': case 'P': e.preventDefault(); this._previewRunning?this.stopPreview():this.startPreview(); break;
+      }
+    });
+  },
+
+  // ── TILES ──
   tileKey(x,y){ return `${x},${y}`; },
 
   placeTile(x,y,dir='right',multi=1,ts=0){
-    const k=this.tileKey(x,y);
-    if(this.tiles[k]) return;
+    const k=this.tileKey(x,y); if(this.tiles[k]) return;
     this.tiles[k]={id:'t'+Date.now()+Math.random().toString(36).slice(2,5),position:{x,y},direction:dir,multiClick:multi,timestamp:ts};
-    this.lastKey=k;
+    this.lastKey=k; this._scheduleAutosave();
   },
 
-  deleteTile(k){ delete this.tiles[k]; if(this.lastKey===k)this.lastKey=null; if(this.selectedKey===k)this.selectedKey=null; },
+  deleteTile(k){ delete this.tiles[k]; if(this.lastKey===k)this.lastKey=null; if(this.selectedKey===k)this.selectedKey=null; this._scheduleAutosave(); },
 
   nKey(x,y,dir){ const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[dir]; return this.tileKey(x+d[0],y+d[1]); },
 
-  selectTile(k){ this.selectedKey=k; this.updatePanel(); },
+  selectTile(k){ this.selectedKey=k; this.updatePanel(); this._drawTimeline(); },
 
   updatePanel(){
     const tile=this.selectedKey?this.tiles[this.selectedKey]:null;
     if(!tile){ $('tile-info').innerHTML='No tile selected.<br>Click a tile on the grid.'; ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.remove('active')); $('ed-tile-ts').value=''; return; }
-    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>×:</strong> ${tile.multiClick}<br><strong>Time:</strong> ${tile.timestamp}s`;
+    $('tile-info').innerHTML=`<strong>Pos:</strong> (${tile.position.x},${tile.position.y})<br><strong>Dir:</strong> ${tile.direction}<br><strong>×:</strong> ${tile.multiClick}<br><strong>Time:</strong> ${this._fmt(tile.timestamp)}`;
     ['up','down','left','right'].forEach(d=>$('dir-'+d).classList.toggle('active',tile.direction===d));
     $('ed-tile-ts').value=tile.timestamp;
   },
 
   render(){
-    const canvas=$('grid-canvas');
-    canvas.innerHTML='';
+    const canvas=$('grid-canvas'); canvas.innerHTML='';
     const keys=Object.keys(this.tiles);
     if(!keys.length){
       const btn=document.createElement('div'); btn.style.cssText='width:32px;height:32px;border:1px solid #333;background:#1e1e1e;color:#888;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-      btn.textContent='+';
-      btn.addEventListener('click',()=>{ this.placeTile(0,0,'right',1,0.5); this.render(); this._centerOnTiles(); });
-      canvas.appendChild(btn); return;
+      btn.textContent='+'; btn.addEventListener('click',()=>{this.placeTile(0,0,'right',1,0);this.render();this._centerOnTiles();}); canvas.appendChild(btn); return;
     }
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     keys.forEach(k=>{const t=this.tiles[k];minX=Math.min(minX,t.position.x);maxX=Math.max(maxX,t.position.x);minY=Math.min(minY,t.position.y);maxY=Math.max(maxY,t.position.y);});
-    // Add 1 cell border so add-buttons don't clip
     minX--;maxX++;minY--;maxY++;
     const cols=maxX-minX+1, rows=maxY-minY+1;
-    canvas.style.gridTemplateColumns=`repeat(${cols},64px)`;
-    canvas.style.gridTemplateRows=`repeat(${rows},64px)`;
+    canvas.style.gridTemplateColumns=`repeat(${cols},64px)`; canvas.style.gridTemplateRows=`repeat(${rows},64px)`;
     const arrow={up:'∧',down:'∨',left:'‹',right:'›'};
     for(let row=minY;row<=maxY;row++){
       for(let col=minX;col<=maxX;col++){
@@ -768,8 +1031,13 @@ const Editor = {
           const blk=document.createElement('div');
           blk.className='tile-block'+(key===this.lastKey?' last-tile':'')+(key===this.selectedKey?' sel-tile':'');
           blk.textContent=arrow[tile.direction]||'?';
-          if(tile.multiClick>1){ const b=document.createElement('div'); b.className='multi-badge'; b.textContent=tile.multiClick; blk.appendChild(b); }
-          blk.addEventListener('click',e=>{ e.stopPropagation(); this.selectTile(key); this.render(); });
+          // Timestamp label under tile
+          const tsLbl=document.createElement('div');
+          tsLbl.style.cssText='position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:7px;color:#555;font-family:monospace;pointer-events:none;white-space:nowrap;';
+          tsLbl.textContent=tile.timestamp>0?tile.timestamp.toFixed(2):'—';
+          blk.appendChild(tsLbl);
+          if(tile.multiClick>1){const b=document.createElement('div');b.className='multi-badge';b.textContent=tile.multiClick;blk.appendChild(b);}
+          blk.addEventListener('click',e=>{e.stopPropagation();this.selectTile(key);this.render();});
           cell.appendChild(blk);
           ['up','down','left','right'].forEach(dir=>{
             const nk=this.nKey(col,row,dir);
@@ -778,47 +1046,72 @@ const Editor = {
               ab.addEventListener('click',e=>{
                 e.stopPropagation();
                 const[nx,ny]=nk.split(',').map(Number);
-                this.placeTile(nx,ny,dir,1,Math.round((tile.timestamp+0.8)*100)/100);
-                this.selectTile(this.tileKey(nx,ny));
-                this.render();
-              });
-              cell.appendChild(ab);
+                const autoTs=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:Math.round((tile.timestamp+0.8)*100)/100;
+                this.placeTile(nx,ny,dir,1,autoTs);
+                this.selectTile(this.tileKey(nx,ny)); this.render();
+              }); cell.appendChild(ab);
             }
           });
         }
         canvas.appendChild(cell);
       }
     }
-    this.updatePanel();
+    this.updatePanel(); this._drawTimeline();
   },
 
   toJSON(){
     const tiles=Object.values(this.tiles).map(t=>({id:t.id,position:t.position,direction:t.direction,multiClick:t.multiClick,timestamp:t.timestamp}));
     tiles.sort((a,b)=>a.timestamp-b.timestamp);
-    return{levelName:$('ed-level-name').value||'Untitled',songFile:$('ed-song-name').value||'',description:'',duration:{minutes:parseInt($('ed-dur-min').value)||0,seconds:parseInt($('ed-dur-sec').value)||0,milliseconds:parseInt($('ed-dur-ms').value)||0},tiles};
+    return{levelName:$('ed-level-name').value||'Untitled',songFile:$('ed-song-name').value||'',description:($('ed-description')?$('ed-description').value:'')||'',duration:{minutes:parseInt($('ed-dur-min').value)||0,seconds:parseInt($('ed-dur-sec').value)||0,milliseconds:parseInt($('ed-dur-ms').value)||0},tiles};
   },
 
-  fromJSON(data){
+  _loadData(data){
     this.tiles={}; this.lastKey=null; this.selectedKey=null;
-    $('ed-level-name').value=data.levelName||''; $('ed-song-name').value=data.songFile||'';
+    $('ed-level-name').value=data.levelName||'My Level'; $('ed-song-name').value=data.songFile||'';
+    if($('ed-description')) $('ed-description').value=data.description||'';
     if(data.duration){$('ed-dur-min').value=data.duration.minutes||0;$('ed-dur-sec').value=data.duration.seconds||0;$('ed-dur-ms').value=data.duration.milliseconds||0;}
-    (data.tiles||[]).forEach(t=>{ const k=this.tileKey(t.position.x,t.position.y); this.tiles[k]={id:t.id||('t'+Math.random().toString(36).slice(2)),position:{x:t.position.x,y:t.position.y},direction:t.direction||'right',multiClick:t.multiClick||1,timestamp:t.timestamp||0}; this.lastKey=k; });
-    this.render(); this._centerOnTiles();
-  }
+    (data.tiles||[]).forEach(t=>{const k=this.tileKey(t.position.x,t.position.y);this.tiles[k]={id:t.id||('t'+Math.random().toString(36).slice(2)),position:{x:t.position.x,y:t.position.y},direction:t.direction||'right',multiClick:t.multiClick||1,timestamp:t.timestamp||0};this.lastKey=k;});
+  },
+
+  fromJSON(data){ this._loadData(data); this.render(); this._centerOnTiles(); this._scheduleAutosave(); }
 };
 
-// Editor sidebar controls
+// ── Editor controls ──
 $('dir-up').addEventListener('click',   ()=>applyDir('up'));
 $('dir-down').addEventListener('click', ()=>applyDir('down'));
 $('dir-left').addEventListener('click', ()=>applyDir('left'));
 $('dir-right').addEventListener('click',()=>applyDir('right'));
-function applyDir(dir){ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].direction=dir; Editor.render(); }
+function applyDir(dir){ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].direction=dir; Editor.render(); Editor._scheduleAutosave(); }
 
-$('multi-1').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=1; Editor.render(); });
-$('multi-2').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=2; Editor.render(); });
-$('ed-tile-ts').addEventListener('change',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].timestamp=parseFloat($('ed-tile-ts').value)||0; Editor.updatePanel(); });
+$('multi-1').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=1; Editor.render(); Editor._scheduleAutosave(); });
+$('multi-2').addEventListener('click',()=>{ if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return; Editor.tiles[Editor.selectedKey].multiClick=2; Editor.render(); Editor._scheduleAutosave(); });
+
+$('ed-tile-ts').addEventListener('change',()=>{
+  if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey]) return;
+  Editor.tiles[Editor.selectedKey].timestamp=parseFloat($('ed-tile-ts').value)||0;
+  Editor.updatePanel(); Editor.render(); Editor._scheduleAutosave();
+});
+
+['ed-level-name','ed-song-name','ed-description','ed-dur-min','ed-dur-sec','ed-dur-ms'].forEach(id=>{
+  const el=$(id); if(el) el.addEventListener('input',()=>Editor._scheduleAutosave());
+});
+
+$('stamp-ts-btn').addEventListener('click',()=>Editor.stampTime());
+$('audio-mark-btn').addEventListener('click',()=>Editor.stampTime());
 $('delete-tile-btn').addEventListener('click',()=>{ if(!Editor.selectedKey) return; Editor.deleteTile(Editor.selectedKey); Editor.render(); showNotif('Tile deleted.'); });
-$('clear-grid-btn').addEventListener('click',()=>{ if(!confirm('Clear the entire grid?')) return; Editor.init(); showNotif('Grid cleared.'); });
+$('clear-grid-btn').addEventListener('click',()=>{ if(!confirm('Clear the entire grid?')) return; Editor.tiles={}; Editor.lastKey=null; Editor.selectedKey=null; Editor.render(); Editor._scheduleAutosave(); showNotif('Grid cleared.'); });
+
+$('load-song-btn').addEventListener('click',()=>$('load-song-input').click());
+$('load-song-input').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; Editor.loadAudio(f); e.target.value=''; });
+$('audio-play-btn').addEventListener('click',()=>Editor.togglePlay());
+$('audio-stop-btn').addEventListener('click',()=>Editor.stopAudio());
+$('audio-preview-vol').addEventListener('input',e=>{ if(Editor.audioEl) Editor.audioEl.volume=e.target.value/100; });
+
+window.addEventListener('resize',()=>{ if(currentScreen==='editor') Editor._initTimeline(); });
+
+$('preview-toggle-btn').addEventListener('click',()=>{ Editor._previewRunning?Editor.stopPreview():Editor.startPreview(); });
+$('preview-close-btn').addEventListener('click',()=>Editor.stopPreview());
+
 $('export-json-btn').addEventListener('click',()=>{
   const json=JSON.stringify(Editor.toJSON(),null,2);
   $('json-output').textContent=json; $('json-modal').classList.add('show');
@@ -1063,10 +1356,15 @@ $('btn-editor').addEventListener('click',()=>{
 $('btn-levels').addEventListener('click',()=>{playBeep(660,0.05);renderLevels();showScreen('levels');});
 $('btn-settings').addEventListener('click',()=>{playBeep(660,0.05);showScreen('settings');});
 
-// Back buttons — these are correct event targets with z-index:60 so they always fire
 $('levels-back').addEventListener('click',  ()=>{playBeep(440,0.05);showScreen('menu');});
 $('settings-back').addEventListener('click',()=>{playBeep(440,0.05);showScreen('menu');});
-$('editor-back').addEventListener('click',  ()=>{playBeep(440,0.05);showScreen('menu');});
+$('editor-back').addEventListener('click',  ()=>{
+  playBeep(440,0.05);
+  // Stop audio preview cleanly when leaving editor
+  if(Editor.audioEl){ Editor.audioEl.pause(); Editor.audioPlaying=false; cancelAnimationFrame(Editor._rafAudio); }
+  if(Editor._previewRunning) Editor.stopPreview();
+  showScreen('menu');
+});
 
 // Load JSON removed — only official levels shown in Levels screen
 </script>
