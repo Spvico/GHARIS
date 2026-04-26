@@ -175,6 +175,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .multi-info-row{display:flex;align-items:center;gap:8px;margin-top:5px;padding:7px 9px;background:var(--faint);border:1px solid var(--border);}
 .multi-info-badge{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--white);letter-spacing:0.1em;flex-shrink:0;}
 .multi-info-hint{font-size:8px;letter-spacing:0.08em;color:var(--dim);line-height:1.4;}
+.project-slots{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+.project-slot{display:flex;align-items:center;border:1px solid var(--border);background:transparent;transition:var(--tr);position:relative;}
+.project-slot.active-slot{border-color:var(--white);}
+.slot-load-btn{flex:1;background:transparent;border:none;color:var(--dim);font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;padding:7px 9px;cursor:pointer;text-align:left;transition:color var(--tr);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.project-slot.active-slot .slot-load-btn{color:var(--white);}
+.slot-load-btn:hover{color:var(--white);}
+.slot-save-btn{flex-shrink:0;background:transparent;border:none;border-left:1px solid var(--border);color:var(--dim);font-family:var(--font-head);font-size:9px;letter-spacing:0.15em;padding:7px 8px;cursor:pointer;transition:var(--tr);text-transform:uppercase;}
+.slot-save-btn:hover{background:var(--white);color:var(--bg);}
+.slot-del-btn{flex-shrink:0;background:transparent;border:none;border-left:1px solid var(--border);color:#444;font-size:10px;padding:7px 8px;cursor:pointer;transition:color var(--tr);}
+.slot-del-btn:hover{color:#c00;}
+.project-slot-rename{position:absolute;inset:0;display:flex;align-items:center;background:var(--faint);border:1px solid var(--white);z-index:10;padding:0 6px;gap:6px;}
+.slot-rename-input{flex:1;background:transparent;border:none;color:var(--white);font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;}
+.slot-rename-confirm{background:var(--white);border:none;color:var(--bg);font-family:var(--font-head);font-size:9px;padding:4px 8px;cursor:pointer;letter-spacing:0.15em;text-transform:uppercase;}
+.new-slot-btn{width:100%;background:transparent;border:1px dashed var(--border);color:var(--dim);font-family:var(--font-head);font-size:9px;letter-spacing:0.25em;text-transform:uppercase;padding:7px;cursor:pointer;transition:var(--tr);margin-top:4px;}
+.new-slot-btn:hover{border-color:var(--white);color:var(--white);}
 .autosave-badge{font-size:8px;letter-spacing:0.2em;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:5px;}
 .autosave-dot{width:5px;height:5px;border-radius:50%;background:#555;transition:background 0.3s;}
 .autosave-dot.saved{background:#6f6;}
@@ -451,6 +466,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
               <b style="color:#aaa">Del</b> Delete tile · <b style="color:#aaa">P</b> Preview<br>
               <b style="color:#aaa">↑↓←→</b> Change direction
             </div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-label">Project Slots</div>
+            <div class="project-slots" id="project-slots-list"></div>
+            <button class="new-slot-btn" id="new-slot-btn">+ New Slot</button>
           </div>
           <div class="sidebar-section">
             <div class="sidebar-label">Actions</div>
@@ -1300,6 +1320,146 @@ $('import-json-ed-btn').addEventListener('click',()=>$('import-json-ed-input').c
 $('import-json-ed-input').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{Editor.fromJSON(JSON.parse(ev.target.result));showNotif('Level imported.');}catch{showNotif('Invalid JSON.');}};r.readAsText(f);e.target.value='';});
 $('copy-json-btn').addEventListener('click',()=>{navigator.clipboard.writeText($('json-output').textContent).then(()=>showNotif('Copied!')).catch(()=>showNotif('Copy manually.'));});
 $('close-json-btn').addEventListener('click',()=>$('json-modal').classList.remove('show'));
+
+// ── PROJECT SLOTS ──
+const ProjectSlots={
+  _key:'gharis_project_slots',
+  _activeKey:'gharis_project_active',
+  MAX:12,
+
+  getSlots(){return JSON.parse(localStorage.getItem(this._key)||'[]');},
+  saveSlots(s){localStorage.setItem(this._key,JSON.stringify(s));},
+  getActiveId(){return localStorage.getItem(this._activeKey)||null;},
+  setActiveId(id){if(id)localStorage.setItem(this._activeKey,id);else localStorage.removeItem(this._activeKey);},
+
+  // Create a new slot, save current editor state into it
+  newSlot(){
+    const slots=this.getSlots();
+    if(slots.length>=this.MAX){showNotif('Maximum '+this.MAX+' project slots reached.');return;}
+    const id='slot_'+Date.now();
+    const data=Editor.toJSON();
+    const name=data.levelName||'Untitled';
+    slots.push({id,name,data,savedAt:Date.now()});
+    this.saveSlots(slots);
+    this.setActiveId(id);
+    this.render();
+    showNotif('Project "'+name+'" saved to new slot.');
+  },
+
+  // Save current editor state into an existing slot
+  saveToSlot(id){
+    const slots=this.getSlots();
+    const idx=slots.findIndex(s=>s.id===id);
+    if(idx<0)return;
+    const data=Editor.toJSON();
+    slots[idx].data=data;
+    slots[idx].name=data.levelName||slots[idx].name;
+    slots[idx].savedAt=Date.now();
+    this.saveSlots(slots);
+    this.setActiveId(id);
+    this.render();
+    showNotif('Saved to "'+slots[idx].name+'".');
+  },
+
+  // Load a slot into the editor
+  loadSlot(id){
+    const slots=this.getSlots();
+    const slot=slots.find(s=>s.id===id);
+    if(!slot)return;
+    Editor._pushUndo();
+    Editor.fromJSON(slot.data);
+    this.setActiveId(id);
+    this.render();
+    showNotif('Loaded "'+slot.name+'".');
+  },
+
+  // Delete a slot
+  deleteSlot(id){
+    const slots=this.getSlots().filter(s=>s.id!==id);
+    this.saveSlots(slots);
+    if(this.getActiveId()===id){
+      this.setActiveId(slots.length?slots[slots.length-1].id:null);
+      // If we deleted the active slot, just keep current editor state
+    }
+    this.render();
+    showNotif('Slot deleted.');
+  },
+
+  // Rename a slot inline
+  startRename(id,slotEl){
+    const slots=this.getSlots();
+    const slot=slots.find(s=>s.id===id);
+    if(!slot)return;
+    // Inject rename row
+    const renameEl=document.createElement('div');
+    renameEl.className='project-slot-rename';
+    const inp=document.createElement('input');
+    inp.className='slot-rename-input';
+    inp.value=slot.name;inp.maxLength=40;
+    const confirmBtn=document.createElement('button');
+    confirmBtn.className='slot-rename-confirm';confirmBtn.textContent='OK';
+    renameEl.appendChild(inp);renameEl.appendChild(confirmBtn);
+    slotEl.appendChild(renameEl);
+    inp.focus();inp.select();
+    const finish=()=>{
+      const newName=inp.value.trim()||slot.name;
+      slot.name=newName;this.saveSlots(slots);
+      this.render();
+    };
+    confirmBtn.addEventListener('click',finish);
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')finish();if(e.key==='Escape'){slotEl.removeChild(renameEl);}});
+  },
+
+  _fmt(ts){const d=new Date(ts);return d.toLocaleDateString('en',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});},
+
+  render(){
+    const list=$('project-slots-list');
+    if(!list)return;
+    list.innerHTML='';
+    const slots=this.getSlots();
+    const activeId=this.getActiveId();
+
+    if(!slots.length){
+      const empty=document.createElement('div');
+      empty.style.cssText='font-size:9px;color:#333;letter-spacing:0.1em;padding:6px 2px;font-style:italic;';
+      empty.textContent='No slots. Click + New Slot to begin.';
+      list.appendChild(empty);return;
+    }
+
+    slots.forEach(slot=>{
+      const row=document.createElement('div');
+      row.className='project-slot'+(slot.id===activeId?' active-slot':'');
+
+      const loadBtn=document.createElement('button');
+      loadBtn.className='slot-load-btn';
+      loadBtn.title='Load this project';
+      loadBtn.innerHTML=`<span style="display:block;font-size:9px;letter-spacing:0.08em;">${slot.name}</span><span style="display:block;font-size:7px;color:#444;margin-top:1px;letter-spacing:0.05em;">${this._fmt(slot.savedAt)}</span>`;
+      loadBtn.addEventListener('click',()=>this.loadSlot(slot.id));
+      // Double-click to rename
+      loadBtn.addEventListener('dblclick',e=>{e.stopPropagation();this.startRename(slot.id,row);});
+
+      const saveBtn=document.createElement('button');
+      saveBtn.className='slot-save-btn';
+      saveBtn.title='Overwrite this slot with current editor state';
+      saveBtn.textContent='Save';
+      saveBtn.addEventListener('click',e=>{e.stopPropagation();this.saveToSlot(slot.id);});
+
+      const delBtn=document.createElement('button');
+      delBtn.className='slot-del-btn';
+      delBtn.title='Delete this slot';
+      delBtn.textContent='✕';
+      delBtn.addEventListener('click',e=>{e.stopPropagation();if(!confirm('Delete slot "'+slot.name+'"?'))return;this.deleteSlot(slot.id);});
+
+      row.appendChild(loadBtn);row.appendChild(saveBtn);row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+};
+
+$('new-slot-btn').addEventListener('click',()=>ProjectSlots.newSlot());
+// Init project slots on editor open
+const _origEditorInit=Editor.init.bind(Editor);
+Editor.init=function(){_origEditorInit();ProjectSlots.render();};
 
 // ── GAME ENGINE ──
 const Game={
