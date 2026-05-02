@@ -225,7 +225,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .add-btn.down {bottom:-9px;left:50%;transform:translateX(-50%);}
 .add-btn.left {left:-9px;top:50%;transform:translateY(-50%);}
 .add-btn.right{right:-9px;top:50%;transform:translateY(-50%);}
-.editor-hint{position:absolute;bottom:10px;right:12px;font-size:8px;letter-spacing:0.2em;color:#363636;pointer-events:none;text-transform:uppercase;line-height:1.8;text-align:right;}
+.editor-hint{position:absolute;bottom:48px;right:12px;font-size:8px;letter-spacing:0.2em;color:#363636;pointer-events:none;text-transform:uppercase;line-height:1.8;text-align:right;}
+.editor-zoom-bar{position:absolute;bottom:10px;right:12px;display:flex;align-items:center;gap:4px;z-index:10;}
+.editor-zoom-btn{background:rgba(10,10,10,0.85);border:1px solid var(--border);color:var(--dim);font-family:var(--font-head);font-size:14px;width:30px;height:28px;cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.editor-zoom-btn:hover,.editor-zoom-btn:active{background:var(--white);color:var(--bg);border-color:var(--white);}
+.editor-zoom-label{font-family:var(--font-mono);font-size:9px;color:var(--dim);letter-spacing:0.1em;min-width:32px;text-align:center;}
 .editor-bottom{height:130px;flex-shrink:0;border-top:1px solid var(--border);background:#0d0d0d;display:flex;flex-direction:column;position:relative;}
 .audio-toolbar{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .audio-time{font-family:var(--font-mono);font-size:11px;color:var(--white);letter-spacing:0.05em;min-width:90px;}
@@ -514,7 +518,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
       </div>
       <div class="editor-main" id="editor-main">
         <div class="editor-viewport" id="editor-viewport"><div class="grid-canvas" id="grid-canvas"></div></div>
-        <div class="editor-hint">Drag to pan · Scroll to zoom<br>Space = play/pause · M = stamp · Ctrl+Z = undo</div>
+        <div class="editor-hint">Drag to pan · Scroll/pinch to zoom<br>Space = play/pause · M = stamp · Ctrl+Z = undo</div>
+        <div class="editor-zoom-bar">
+          <button class="editor-zoom-btn" id="ez-jump-start" title="Jump to first tile">⇤</button>
+          <button class="editor-zoom-btn" id="ez-zoom-out" title="Zoom out">−</button>
+          <span class="editor-zoom-label" id="ez-zoom-label">100%</span>
+          <button class="editor-zoom-btn" id="ez-zoom-in" title="Zoom in">+</button>
+          <button class="editor-zoom-btn" id="ez-jump-end" title="Jump to last tile">⇥</button>
+        </div>
       </div>
     </div>
     <div class="editor-bottom">
@@ -1368,11 +1379,11 @@ const Editor={
       const alpha=clamp((dt-appear)/0.3,0,1);
       ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=alpha;
       ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(-T/2,-T/2,T,T);
-      const h=T*0.38,d=T*0.22;ctx.strokeStyle='#fff';ctx.lineWidth=T*0.10;ctx.lineCap='square';ctx.lineJoin='miter';ctx.beginPath();
-      if(tile.direction==='right'){ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);}
-      if(tile.direction==='left'){ctx.moveTo(d,-h);ctx.lineTo(-d,0);ctx.lineTo(d,h);}
-      if(tile.direction==='up'){ctx.moveTo(-h,d);ctx.lineTo(0,-d);ctx.lineTo(h,d);}
-      if(tile.direction==='down'){ctx.moveTo(-h,-d);ctx.lineTo(0,d);ctx.lineTo(h,-d);}
+      const h=T*0.32,d=T*0.20;
+      const rot={right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2}[tile.direction]||0;
+      ctx.strokeStyle='#fff';ctx.lineWidth=T*0.10;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.save();ctx.rotate(rot);
+      ctx.beginPath();ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);
       ctx.stroke();ctx.restore();
       const prog=clamp((dt-appear)/(-appear),0,1);
       const rSize=RING_START-(RING_START-T)*prog;
@@ -1383,7 +1394,63 @@ const Editor={
     });
   },
 
-  _applyTransform(){$('editor-viewport').style.transform=`translate(${this.panX}px,${this.panY}px) scale(${this.zoom})`;},
+  _applyTransform(){
+    $('editor-viewport').style.transform=`translate(${this.panX}px,${this.panY}px) scale(${this.zoom})`;
+    const zl=$('ez-zoom-label');
+    if(zl)zl.textContent=Math.round(this.zoom*100)+'%';
+  },
+
+  changeZoom(factor,cx,cy){
+    const main=$('editor-main');
+    const rect=main.getBoundingClientRect();
+    const mx=(cx!=null?cx:rect.width/2);
+    const my=(cy!=null?cy:rect.height/2);
+    const nz=clamp(this.zoom*factor,0.15,4);
+    this.panX=mx-(mx-this.panX)*(nz/this.zoom);
+    this.panY=my-(my-this.panY)*(nz/this.zoom);
+    this.zoom=nz;
+    this._applyTransform();
+  },
+
+  // Tween pan/zoom to center on a specific tile position in 1s
+  jumpToTile(tile){
+    const main=$('editor-main');
+    const W=main.clientWidth||600, H=main.clientHeight||400;
+    const CELL=64;
+    const targetPanX=W/2-(tile.position.x*CELL+CELL/2)*this.zoom;
+    const targetPanY=H/2-(tile.position.y*CELL+CELL/2)*this.zoom;
+    const startPanX=this.panX, startPanY=this.panY;
+    const startTime=performance.now(), DURATION=900;
+    const ease=t=>t<0.5?2*t*t:(1-(2-2*t)*(2-2*t)/2); // ease-in-out
+    const frame=()=>{
+      const elapsed=performance.now()-startTime;
+      const t=clamp(elapsed/DURATION,0,1);
+      const e=ease(t);
+      this.panX=startPanX+(targetPanX-startPanX)*e;
+      this.panY=startPanY+(targetPanY-startPanY)*e;
+      this._applyTransform();
+      if(t<1)requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  },
+
+  jumpToStart(){
+    const tiles=Object.values(this.tiles);
+    if(!tiles.length)return;
+    const tile=tiles.reduce((a,b)=>a.timestamp<=b.timestamp?a:b);
+    this.selectTile(this.tileKey(tile.position.x,tile.position.y));
+    this.render();
+    this.jumpToTile(tile);
+  },
+
+  jumpToEnd(){
+    const tiles=Object.values(this.tiles);
+    if(!tiles.length)return;
+    const tile=tiles.reduce((a,b)=>a.timestamp>=b.timestamp?a:b);
+    this.selectTile(this.tileKey(tile.position.x,tile.position.y));
+    this.render();
+    this.jumpToTile(tile);
+  },
   _centerOnTiles(){
     const main=$('editor-main');const W=main.clientWidth||600,H=main.clientHeight||400;
     const keys=Object.keys(this.tiles);
@@ -1395,14 +1462,58 @@ const Editor={
   },
   _attachPanListeners(){
     const el=$('editor-main');
-    el.addEventListener('mousedown',e=>{if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input,.ts-stamp-btn'))return;this._dragging=true;this._startX=e.clientX;this._startY=e.clientY;this._startPX=this.panX;this._startPY=this.panY;el.classList.add('grabbing');});
+    el.addEventListener('mousedown',e=>{
+      if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input,.ts-stamp-btn,.editor-zoom-btn,.editor-zoom-label'))return;
+      this._dragging=true;this._startX=e.clientX;this._startY=e.clientY;
+      this._startPX=this.panX;this._startPY=this.panY;el.classList.add('grabbing');
+    });
     window.addEventListener('mousemove',e=>{if(!this._dragging)return;this.panX=this._startPX+(e.clientX-this._startX);this.panY=this._startPY+(e.clientY-this._startY);this._applyTransform();});
     window.addEventListener('mouseup',()=>{if(this._dragging){this._dragging=false;$('editor-main').classList.remove('grabbing');}});
-    let t0=null;
-    el.addEventListener('touchstart',e=>{if(e.touches.length!==1||e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input'))return;t0=e.touches[0];this._startPX=this.panX;this._startPY=this.panY;e.preventDefault();},{passive:false});
-    el.addEventListener('touchmove',e=>{if(!t0||e.touches.length!==1)return;const t=e.touches[0];this.panX=this._startPX+(t.clientX-t0.clientX);this.panY=this._startPY+(t.clientY-t0.clientY);this._applyTransform();e.preventDefault();},{passive:false});
-    el.addEventListener('touchend',()=>{t0=null;});
-    el.addEventListener('wheel',e=>{e.preventDefault();const rect=el.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top,factor=e.deltaY<0?1.1:0.91,nz=clamp(this.zoom*factor,0.25,3);this.panX=mx-(mx-this.panX)*(nz/this.zoom);this.panY=my-(my-this.panY)*(nz/this.zoom);this.zoom=nz;this._applyTransform();},{passive:false});
+
+    // Touch pan + pinch zoom
+    let t0=null,pinch0=null;
+    el.addEventListener('touchstart',e=>{
+      if(e.touches.length===1){
+        if(e.target.closest('.tile-block,.add-btn,.dir-btn,.editor-btn,.editor-input,.editor-zoom-btn'))return;
+        t0=e.touches[0];this._startPX=this.panX;this._startPY=this.panY;
+      } else if(e.touches.length===2){
+        t0=null;
+        const dx=e.touches[1].clientX-e.touches[0].clientX;
+        const dy=e.touches[1].clientY-e.touches[0].clientY;
+        pinch0={dist:Math.hypot(dx,dy),zoom:this.zoom,
+          cx:(e.touches[0].clientX+e.touches[1].clientX)/2,
+          cy:(e.touches[0].clientY+e.touches[1].clientY)/2,
+          panX:this.panX,panY:this.panY};
+      }
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('touchmove',e=>{
+      if(e.touches.length===1&&t0){
+        const t=e.touches[0];
+        this.panX=this._startPX+(t.clientX-t0.clientX);
+        this.panY=this._startPY+(t.clientY-t0.clientY);
+        this._applyTransform();
+      } else if(e.touches.length===2&&pinch0){
+        const dx=e.touches[1].clientX-e.touches[0].clientX;
+        const dy=e.touches[1].clientY-e.touches[0].clientY;
+        const dist=Math.hypot(dx,dy);
+        const nz=clamp(pinch0.zoom*(dist/pinch0.dist),0.15,4);
+        const rect=el.getBoundingClientRect();
+        const mx=pinch0.cx-rect.left, my=pinch0.cy-rect.top;
+        this.panX=mx-(mx-pinch0.panX)*(nz/pinch0.zoom);
+        this.panY=my-(my-pinch0.panY)*(nz/pinch0.zoom);
+        this.zoom=nz;this._applyTransform();
+      }
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('touchend',e=>{if(e.touches.length===0){t0=null;pinch0=null;}else if(e.touches.length===1){t0=e.touches[0];this._startPX=this.panX;this._startPY=this.panY;pinch0=null;}});
+
+    // Scroll to zoom
+    el.addEventListener('wheel',e=>{
+      e.preventDefault();
+      const rect=el.getBoundingClientRect();
+      this.changeZoom(e.deltaY<0?1.1:0.91,e.clientX-rect.left,e.clientY-rect.top);
+    },{passive:false});
   },
   _attachKeyListeners(){
     document.addEventListener('keydown',e=>{
@@ -1516,6 +1627,10 @@ $('auto-dur-btn').addEventListener('click',()=>{
   $('ed-dur-min').value=mins;$('ed-dur-sec').value=secs;$('ed-dur-ms').value=ms;
   Editor._scheduleAutosave();showNotif(`Duration set to ${mins}:${String(secs).padStart(2,'0')}.${String(ms).padStart(3,'0')}`,2500);
 });
+$('ez-zoom-in').addEventListener('click',()=>Editor.changeZoom(1.25));
+$('ez-zoom-out').addEventListener('click',()=>Editor.changeZoom(0.8));
+$('ez-jump-start').addEventListener('click',()=>Editor.jumpToStart());
+$('ez-jump-end').addEventListener('click',()=>Editor.jumpToEnd());
 window.addEventListener('resize',()=>{if(currentScreen==='editor')Editor._initTimeline();});
 $('preview-toggle-btn').addEventListener('click',()=>{Editor._previewRunning?Editor.stopPreview():Editor.startPreview();});
 $('preview-close-btn').addEventListener('click',()=>Editor.stopPreview());
@@ -1814,12 +1929,16 @@ const Game={
   },
 
   _drawArrow(ctx,dir,size,color){
-    const h=size*0.38,d=size*0.22;ctx.strokeStyle=color;ctx.lineWidth=size*0.10;ctx.lineCap='square';ctx.lineJoin='miter';ctx.beginPath();
-    if(dir==='right'){ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);}
-    if(dir==='left'){ctx.moveTo(d,-h);ctx.lineTo(-d,0);ctx.lineTo(d,h);}
-    if(dir==='up'){ctx.moveTo(-h,d);ctx.lineTo(0,-d);ctx.lineTo(h,d);}
-    if(dir==='down'){ctx.moveTo(-h,-d);ctx.lineTo(0,d);ctx.lineTo(h,-d);}
+    // Draw a single > (right-pointing chevron) then rotate for other directions
+    const h=size*0.32, d=size*0.20;
+    const rot={right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2}[dir]||0;
+    ctx.save();
+    ctx.rotate(rot);
+    ctx.strokeStyle=color;ctx.lineWidth=size*0.10;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();
+    ctx.moveTo(-d,-h);ctx.lineTo(d,0);ctx.lineTo(-d,h);
     ctx.stroke();
+    ctx.restore();
   },
 
   draw(){
