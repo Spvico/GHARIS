@@ -1246,7 +1246,11 @@ const Editor={
     const t=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:0;
     this._pushUndo();
     this.tiles[this.selectedKey].timestamp=t;
-    $('ed-tile-ts').value=t;this.updatePanel();this.render();this._scheduleAutosave();
+    $('ed-tile-ts').value=t;
+    this.updatePanel();
+    this._patchCells();       // patch only — no DOM rebuild
+    this._drawTimelineSoon(); // defer timeline redraw
+    this._scheduleAutosave();
     showNotif('Stamped '+this._fmt(t)+' → tile',1200);
     if(this.autoSwitch)this._autoAdvance();
   },
@@ -1255,7 +1259,12 @@ const Editor={
     let nextKey=null;
     if(unset.length>0)nextKey=unset[0][0];
     else{const sorted=Object.entries(this.tiles).sort((a,b)=>a[1].timestamp-b[1].timestamp);const idx=sorted.findIndex(([k])=>k===this.selectedKey);if(idx>=0&&idx<sorted.length-1)nextKey=sorted[idx+1][0];}
-    if(nextKey){this.selectTile(nextKey);this.render();}
+    if(nextKey){
+      this.selectedKey=nextKey;
+      this.updatePanel();
+      this._patchCells(); // patch selection highlight only — no rebuild
+      this._drawTimelineSoon();
+    }
   },
 
   _initTimeline(){
@@ -1552,7 +1561,7 @@ const Editor={
   },
   deleteTile(k){delete this.tiles[k];if(this.lastKey===k)this.lastKey=null;if(this.selectedKey===k)this.selectedKey=null;this._scheduleAutosave();},
   nKey(x,y,dir){const d={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[dir];return this.tileKey(x+d[0],y+d[1]);},
-  selectTile(k){this.selectedKey=k;this.updatePanel();this._drawTimeline();},
+  selectTile(k){this.selectedKey=k;this.updatePanel();this._patchCells();this._drawTimelineSoon();},
   updatePanel(){
     const tile=this.selectedKey?this.tiles[this.selectedKey]:null;
     if(!tile){$('tile-info').innerHTML='No tile selected.<br>Click a tile on the grid.';['up','down','left','right'].forEach(d=>$('dir-'+d).classList.remove('active'));$('ed-tile-ts').value='';$('multi-info-badge').textContent='—';$('multi-info-hint').textContent='Select a tile';return;}
@@ -1563,41 +1572,114 @@ const Editor={
     $('ed-tile-ts').value=tile.timestamp;
     $('multi-info-badge').textContent=type;$('multi-info-hint').textContent='Single press — all tiles hit once';
   },
-  render(){
-    const canvas=$('grid-canvas');canvas.innerHTML='';
+  // ── OPTIMIZED RENDER SYSTEM ──
+  // Full rebuild: only when topology changes (tiles added, deleted, grid bounds change)
+  // Patch: timestamp label + classes only — no DOM rebuild
+  _lastRenderBounds:null,
+
+  render(forceRebuild=false){
+    const canvas=$('grid-canvas');
     const keys=Object.keys(this.tiles);
-    if(!keys.length){const btn=document.createElement('div');btn.style.cssText='width:32px;height:32px;border:1px solid #333;background:#1e1e1e;color:#888;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;';btn.textContent='+';btn.addEventListener('click',()=>{this.placeTile(0,0,'right',0);this.render();this._centerOnTiles();});canvas.appendChild(btn);return;}
+
+    if(!keys.length){
+      canvas.innerHTML='';
+      this._lastRenderBounds=null;
+      const btn=document.createElement('div');
+      btn.style.cssText='width:32px;height:32px;border:1px solid #333;background:#1e1e1e;color:#888;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+      btn.textContent='+';
+      btn.addEventListener('click',()=>{this.placeTile(0,0,'right',0);this.render();this._centerOnTiles();});
+      canvas.appendChild(btn);
+      this.updatePanel();this._drawTimelineSoon();return;
+    }
+
+    // Compute current bounds
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     keys.forEach(k=>{const t=this.tiles[k];minX=Math.min(minX,t.position.x);maxX=Math.max(maxX,t.position.x);minY=Math.min(minY,t.position.y);maxY=Math.max(maxY,t.position.y);});
     minX--;maxX++;minY--;maxY++;
+
+    const boundsKey=`${minX},${minY},${maxX},${maxY},${keys.length}`;
+    const needsRebuild=forceRebuild||this._lastRenderBounds!==boundsKey;
+
+    if(needsRebuild){
+      this._lastRenderBounds=boundsKey;
+      this._fullRebuild(canvas,minX,maxX,minY,maxY);
+    } else {
+      // Only patch changed cells (classes + timestamp label)
+      this._patchCells();
+    }
+    this.updatePanel();this._drawTimelineSoon();
+  },
+
+  _fullRebuild(canvas,minX,maxX,minY,maxY){
+    canvas.innerHTML='';
     const cols=maxX-minX+1,rows=maxY-minY+1;
-    canvas.style.gridTemplateColumns=`repeat(${cols},64px)`;canvas.style.gridTemplateRows=`repeat(${rows},64px)`;
+    canvas.style.gridTemplateColumns=`repeat(${cols},64px)`;
+    canvas.style.gridTemplateRows=`repeat(${rows},64px)`;
     const arrowRot={up:'-90deg',down:'90deg',left:'180deg',right:'0deg'};
-    for(let row=minY;row<=maxY;row++){for(let col=minX;col<=maxX;col++){
-      const key=this.tileKey(col,row),tile=this.tiles[key];
-      const cell=document.createElement('div');cell.className='grid-cell';
-      if(tile){
-        const isLast=key===this.lastKey,isSel=key===this.selectedKey;
-        const blk=document.createElement('div');
-        blk.className='tile-block'+(isLast?' last-tile':'')+(isSel?' sel-tile':'');
-        blk.innerHTML=`<span style="display:inline-block;transform:rotate(${arrowRot[tile.direction]||'0deg'});line-height:1;pointer-events:none;">›</span>`;
-        const tsLbl=document.createElement('div');
-        tsLbl.style.cssText='position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:7px;color:#555;font-family:monospace;pointer-events:none;white-space:nowrap;';
-        tsLbl.textContent=tile.timestamp>0?tile.timestamp.toFixed(2):'—';blk.appendChild(tsLbl);
-        blk.addEventListener('click',e=>{e.stopPropagation();this.selectTile(key);this.render();});
-        cell.appendChild(blk);
-        ['up','down','left','right'].forEach(dir=>{
-          const nk=this.nKey(col,row,dir);
-          if(!this.tiles[nk]){
-            const ab=document.createElement('div');ab.className='add-btn '+dir;ab.textContent='+';
-            ab.addEventListener('click',e=>{e.stopPropagation();const[nx,ny]=nk.split(',').map(Number);const autoTs=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:Math.round((tile.timestamp+0.8)*100)/100;this._pushUndo();this.placeTile(nx,ny,dir,autoTs);this.selectTile(this.tileKey(nx,ny));this.render();});
-            cell.appendChild(ab);
-          }
-        });
+    for(let row=minY;row<=maxY;row++){
+      for(let col=minX;col<=maxX;col++){
+        const key=this.tileKey(col,row),tile=this.tiles[key];
+        const cell=document.createElement('div');cell.className='grid-cell';cell.dataset.key=key;
+        if(tile){
+          const isLast=key===this.lastKey,isSel=key===this.selectedKey;
+          const blk=document.createElement('div');
+          blk.className='tile-block'+(isLast?' last-tile':'')+(isSel?' sel-tile':'');
+          blk.dataset.key=key;
+          blk.innerHTML=`<span style="display:inline-block;transform:rotate(${arrowRot[tile.direction]||'0deg'});line-height:1;pointer-events:none;">›</span>`;
+          const tsLbl=document.createElement('div');
+          tsLbl.className='ts-lbl';
+          tsLbl.style.cssText='position:absolute;bottom:-14px;left:0;right:0;text-align:center;font-size:7px;color:#555;font-family:monospace;pointer-events:none;white-space:nowrap;';
+          tsLbl.textContent=tile.timestamp>0?tile.timestamp.toFixed(2):'—';
+          blk.appendChild(tsLbl);
+          blk.addEventListener('click',e=>{e.stopPropagation();this.selectTile(key);this.render();});
+          cell.appendChild(blk);
+          ['up','down','left','right'].forEach(dir=>{
+            const nk=this.nKey(col,row,dir);
+            if(!this.tiles[nk]){
+              const ab=document.createElement('div');ab.className='add-btn '+dir;ab.textContent='+';
+              ab.addEventListener('click',e=>{
+                e.stopPropagation();
+                const[nx,ny]=nk.split(',').map(Number);
+                const autoTs=this.audioEl?Math.round(this.audioEl.currentTime*1000)/1000:Math.round((tile.timestamp+0.8)*100)/100;
+                this._pushUndo();this.placeTile(nx,ny,dir,autoTs);this.selectTile(this.tileKey(nx,ny));this.render();
+              });
+              cell.appendChild(ab);
+            }
+          });
+        }
+        canvas.appendChild(cell);
       }
-      canvas.appendChild(cell);
-    }}
-    this.updatePanel();this._drawTimeline();
+    }
+  },
+
+  _patchCells(){
+    // Only update classes and timestamp labels — no DOM rebuild
+    const arrowRot={up:'-90deg',down:'90deg',left:'180deg',right:'0deg'};
+    const canvas=$('grid-canvas');
+    canvas.querySelectorAll('.tile-block[data-key]').forEach(blk=>{
+      const key=blk.dataset.key;
+      const tile=this.tiles[key];if(!tile)return;
+      const isLast=key===this.lastKey,isSel=key===this.selectedKey;
+      blk.className='tile-block'+(isLast?' last-tile':'')+(isSel?' sel-tile':'');
+      // Update arrow rotation if direction changed
+      const span=blk.querySelector('span');
+      const rot=arrowRot[tile.direction]||'0deg';
+      if(span&&span.style.transform!==`rotate(${rot})`){
+        span.style.transform=`rotate(${rot})`;
+      }
+      // Update timestamp label
+      const lbl=blk.querySelector('.ts-lbl');
+      if(lbl){
+        const txt=tile.timestamp>0?tile.timestamp.toFixed(2):'—';
+        if(lbl.textContent!==txt)lbl.textContent=txt;
+      }
+    });
+  },
+
+  // Debounced timeline redraw — max 15fps to avoid 60fps canvas redraws on stamp
+  _drawTimelineSoon(){
+    if(this._timelineRAF)return;
+    this._timelineRAF=requestAnimationFrame(()=>{this._timelineRAF=null;this._drawTimeline();});
   },
   toJSON(){
     const tiles=Object.values(this.tiles).map(t=>({id:t.id,position:t.position,direction:t.direction,timestamp:t.timestamp}));
@@ -1617,7 +1699,7 @@ const Editor={
 
 // Editor button wiring
 $('dir-up').addEventListener('click',()=>applyDir('up'));$('dir-down').addEventListener('click',()=>applyDir('down'));$('dir-left').addEventListener('click',()=>applyDir('left'));$('dir-right').addEventListener('click',()=>applyDir('right'));
-function applyDir(dir){if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey])return;Editor._pushUndo();Editor.tiles[Editor.selectedKey].direction=dir;Editor.render();Editor._scheduleAutosave();}
+function applyDir(dir){if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey])return;Editor._pushUndo();Editor.tiles[Editor.selectedKey].direction=dir;Editor._patchCells();Editor.updatePanel();Editor._scheduleAutosave();}
 $('ed-tile-ts').addEventListener('change',()=>{if(!Editor.selectedKey||!Editor.tiles[Editor.selectedKey])return;Editor._pushUndo();Editor.tiles[Editor.selectedKey].timestamp=parseFloat($('ed-tile-ts').value)||0;Editor.updatePanel();Editor.render();Editor._scheduleAutosave();});
 ['ed-level-name','ed-song-name','ed-creator','ed-description','ed-dur-min','ed-dur-sec','ed-dur-ms'].forEach(id=>{const el=$(id);if(el)el.addEventListener('input',()=>Editor._scheduleAutosave());});
 $('stamp-ts-btn').addEventListener('click',()=>Editor.stampTime());$('audio-mark-btn').addEventListener('click',()=>Editor.stampTime());
@@ -1930,7 +2012,13 @@ const Game={
     if(!this.running)return;
     if(this.paused){this.animId=requestAnimationFrame(()=>this.loop());return;}
     const now=performance.now(),dt=now-(this._lastFrame||now);this._lastFrame=now;
-    this.elapsed=(now-this.startTime)/1000*this.speed;
+    // Use audio.currentTime as authoritative elapsed when audio is present and playing
+    // This correctly handles long silences at start/middle without drift
+    if(this.audio&&!this.audio.paused&&this.audio.duration>0){
+      this.elapsed=this.audio.currentTime*this.speed;
+    } else {
+      this.elapsed=(now-this.startTime)/1000*this.speed;
+    }
     while(this.nextTileIdx<this.tileStates.length){const st=this.tileStates[this.nextTileIdx];if(st.tile.timestamp-this.APPEAR<=this.elapsed){if(st.status==='pending'){st.status='active';this.activeTiles.push(st);}this.nextTileIdx++;}else break;}
     this.activeTiles.forEach(st=>{if(st.status==='active'&&this.elapsed-st.tile.timestamp>this.MW){st.status='missed';this.registerMiss();}});
     this.activeTiles=this.activeTiles.filter(st=>st.status==='active');
