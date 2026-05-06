@@ -1946,7 +1946,16 @@ const Game={
     this.practiceCP=null;this.practiceCPHistory=[];
     this.statPerfect=0;this.statEarly=0;this.statLate=0;this.statMiss=0;
     this.tiles=(lv.tiles||[]).map(t=>({...t})).sort((a,b)=>a.timestamp-b.timestamp);
-    this.tileStates=this.tiles.map(t=>({tile:t,status:'pending'}));
+    this.tileStates=this.tiles.map((t,i)=>{
+      // Per-tile appear window: use the gap since the previous tile,
+      // clamped between MIN_APPEAR and MAX_APPEAR.
+      // This makes the ring shrink slower for long gaps — no skipping.
+      const MIN_APPEAR=1.5, MAX_APPEAR=8;
+      const prev=i>0?this.tiles[i-1]:null;
+      const gap=prev?t.timestamp-prev.timestamp:MIN_APPEAR;
+      const appear=clamp(gap,MIN_APPEAR,MAX_APPEAR);
+      return{tile:t,status:'pending',appear};
+    });
     const d=lv.duration||{};this.totalDuration=(d.minutes||0)*60+(d.seconds||0)+(d.milliseconds||0)/1000||60;
     this.canvas=$('game-canvas');this.ctx=this.canvas.getContext('2d');this.resize();
     this.audio=null;
@@ -1994,8 +2003,8 @@ const Game={
     this.score=0;this.combo=0;this.health=100;this.elapsed=cp;this.nextTileIdx=0;this.activeTiles=[];
     this.camX=0;this.camY=0;this.camTX=0;this.camTY=0;
     this.statPerfect=0;this.statEarly=0;this.statLate=0;this.statMiss=0;
-    this.tileStates=this.tiles.map(t=>({tile:t,status:t.timestamp<cp?'hit':'pending'}));
-    while(this.nextTileIdx<this.tileStates.length&&this.tileStates[this.nextTileIdx].tile.timestamp-this.APPEAR<=cp)this.nextTileIdx++;
+    this.tileStates=this.tiles.map((t,i)=>{const MIN_APPEAR=1.5,MAX_APPEAR=8;const prev=i>0?this.tiles[i-1]:null;const gap=prev?t.timestamp-prev.timestamp:MIN_APPEAR;const appear=clamp(gap,MIN_APPEAR,MAX_APPEAR);return{tile:t,status:t.timestamp<cp?'hit':'pending',appear};});
+    while(this.nextTileIdx<this.tileStates.length&&this.tileStates[this.nextTileIdx].tile.timestamp-this.tileStates[this.nextTileIdx].appear<=cp)this.nextTileIdx++;
     this.running=true;this.paused=false;
     $('game-pause-overlay').classList.remove('show');
     $('result-overlay').classList.remove('show');
@@ -2019,7 +2028,7 @@ const Game={
     } else {
       this.elapsed=(now-this.startTime)/1000*this.speed;
     }
-    while(this.nextTileIdx<this.tileStates.length){const st=this.tileStates[this.nextTileIdx];if(st.tile.timestamp-this.APPEAR<=this.elapsed){if(st.status==='pending'){st.status='active';this.activeTiles.push(st);}this.nextTileIdx++;}else break;}
+    while(this.nextTileIdx<this.tileStates.length){const st=this.tileStates[this.nextTileIdx];if(st.tile.timestamp-st.appear<=this.elapsed){if(st.status==='pending'){st.status='active';this.activeTiles.push(st);}this.nextTileIdx++;}else break;}
     this.activeTiles.forEach(st=>{if(st.status==='active'&&this.elapsed-st.tile.timestamp>this.MW){st.status='missed';this.registerMiss();}});
     this.activeTiles=this.activeTiles.filter(st=>st.status==='active');
     if(this.tileStates.every(st=>st.status!=='pending'&&st.status!=='active')&&this.elapsed>(this.tiles.length?this.tiles[this.tiles.length-1].timestamp+1:2)){this.win();return;}
@@ -2034,7 +2043,14 @@ const Game={
     const G=80;let wx=0,wy=0,w=0;
     this.activeTiles.forEach(st=>{const dt=Math.abs(this.elapsed-st.tile.timestamp),tw=clamp(1.5-dt*2,0.2,1.5);wx+=st.tile.position.x*G*tw;wy+=st.tile.position.y*G*tw;w+=tw;});
     let la=0;
-    for(let i=this.nextTileIdx;i<this.tileStates.length&&la<2;i++){const st=this.tileStates[i];const tu=st.tile.timestamp-this.elapsed,pw=this.APPEAR+0.8;if(tu>pw)break;const lw=clamp((pw-tu)/pw,0,1)*0.5;wx+=st.tile.position.x*G*lw;wy+=st.tile.position.y*G*lw;w+=lw;la++;}
+    for(let i=this.nextTileIdx;i<this.tileStates.length&&la<2;i++){
+      const st=this.tileStates[i];
+      const stApp=st.appear||this.APPEAR;
+      const tu=st.tile.timestamp-this.elapsed,pw=stApp+0.8;
+      if(tu>pw)break;
+      const lw=clamp((pw-tu)/pw,0,1)*0.5;
+      wx+=st.tile.position.x*G*lw;wy+=st.tile.position.y*G*lw;w+=lw;la++;
+    }
     if(w>0){this.camTX=-(wx/w);this.camTY=-(wy/w);}else{this.camTX=0;this.camTY=0;}
   },
 
@@ -2058,20 +2074,26 @@ const Game={
     ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
     for(let x=offX-G;x<W+G;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for(let y=offY-G;y<H+G;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-    const cx=W/2+this.camX,cy=H/2+this.camY,T=this.TILE,appear=-this.APPEAR;
+    const cx=W/2+this.camX,cy=H/2+this.camY,T=this.TILE;
     // % HUD update
     if(Settings.showPct){const tot=this.tileStates.length,done=this.tileStates.filter(s=>s.status==='hit'||s.status==='missed').length;$('hud-pct').textContent=tot>0?Math.round(done/tot*100)+'%':'0%';}
     this.activeTiles.forEach(st=>{
       const tile=st.tile,dtime=this.elapsed-tile.timestamp;
+      const stApp=st.appear||this.APPEAR; // per-tile appear window
       const tx=cx+tile.position.x*G,ty=cy+tile.position.y*G;
-      ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=clamp((dtime-appear)/0.3,0,1);
+      // Tile + arrow — fade in over first 0.4s of appear window
+      ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=clamp((dtime+stApp)/0.4,0,1);
       ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(-T/2,-T/2,T,T);
       this._drawArrow(ctx,tile.direction,T,'#fff');ctx.restore();
-      if(dtime>=appear&&dtime<=this.MW+0.1){
-        const RING_START=T*2.6,prog=clamp((dtime-appear)/(-appear),0,1);
+      // Ring — shrinks from RING_START to T over stApp seconds
+      if(dtime>=-stApp&&dtime<=this.MW+0.1){
+        const RING_START=T*2.6;
+        const prog=clamp((dtime+stApp)/stApp,0,1); // 0 at appear, 1 at timestamp
         const rSize=RING_START-(RING_START-T)*prog;
         let rA=1;if(dtime>0)rA=clamp(1-(dtime/this.MW)*1.3,0,1);
-        ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=rA;ctx.strokeStyle='#fff';ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);ctx.strokeRect(-rSize/2,-rSize/2,rSize,rSize);ctx.restore();
+        ctx.save();ctx.translate(tx,ty);ctx.globalAlpha=rA;
+        ctx.strokeStyle='#fff';ctx.lineWidth=clamp(2.5-prog*1.2,1,2.5);
+        ctx.strokeRect(-rSize/2,-rSize/2,rSize,rSize);ctx.restore();
       }
     });
     // Practice checkpoint line
