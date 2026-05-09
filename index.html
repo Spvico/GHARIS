@@ -1947,13 +1947,8 @@ const Game={
     this.statPerfect=0;this.statEarly=0;this.statLate=0;this.statMiss=0;
     this.tiles=(lv.tiles||[]).map(t=>({...t})).sort((a,b)=>a.timestamp-b.timestamp);
     this.tileStates=this.tiles.map((t,i)=>{
-      // Per-tile appear window: use the gap since the previous tile,
-      // clamped between MIN_APPEAR and MAX_APPEAR.
-      // This makes the ring shrink slower for long gaps — no skipping.
-      const MIN_APPEAR=1.5, MAX_APPEAR=8;
       const prev=i>0?this.tiles[i-1]:null;
-      const gap=prev?t.timestamp-prev.timestamp:MIN_APPEAR;
-      const appear=clamp(gap,MIN_APPEAR,MAX_APPEAR);
+      const appear=prev?t.timestamp-prev.timestamp:t.timestamp||1.5;
       return{tile:t,status:'pending',appear};
     });
     const d=lv.duration||{};this.totalDuration=(d.minutes||0)*60+(d.seconds||0)+(d.milliseconds||0)/1000||60;
@@ -2003,7 +1998,7 @@ const Game={
     this.score=0;this.combo=0;this.health=100;this.elapsed=cp;this.nextTileIdx=0;this.activeTiles=[];
     this.camX=0;this.camY=0;this.camTX=0;this.camTY=0;
     this.statPerfect=0;this.statEarly=0;this.statLate=0;this.statMiss=0;
-    this.tileStates=this.tiles.map((t,i)=>{const MIN_APPEAR=1.5,MAX_APPEAR=8;const prev=i>0?this.tiles[i-1]:null;const gap=prev?t.timestamp-prev.timestamp:MIN_APPEAR;const appear=clamp(gap,MIN_APPEAR,MAX_APPEAR);return{tile:t,status:t.timestamp<cp?'hit':'pending',appear};});
+    this.tileStates=this.tiles.map((t,i)=>{const prev=i>0?this.tiles[i-1]:null;const appear=prev?t.timestamp-prev.timestamp:t.timestamp||1.5;return{tile:t,status:t.timestamp<cp?'hit':'pending',appear};});
     while(this.nextTileIdx<this.tileStates.length&&this.tileStates[this.nextTileIdx].tile.timestamp-this.tileStates[this.nextTileIdx].appear<=cp)this.nextTileIdx++;
     this.running=true;this.paused=false;
     $('game-pause-overlay').classList.remove('show');
